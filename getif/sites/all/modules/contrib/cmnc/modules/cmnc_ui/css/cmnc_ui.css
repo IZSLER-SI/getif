@@ -1,0 +1,10 @@
+/**
+ * @file
+ * Minimal formatting required by the CMNC module.
+ */
+
+/* Hide the CMNC Flag Link Text */
+#quicktabs-commons_follow_ui .cmnc-flag-link a.flag span,
+#quicktabs-tabpage-commons_follow_ui-notification_types a.flag span {
+  display: none;
+}

@@ -1,0 +1,62 @@
+/**
+ * @file
+ * CSS for the CMNC Message Notification Icon block.
+ */
+
+.cmnc-notification-icon-block {
+  max-width: 40px;
+  overflow: visible;
+}
+
+.cmnc-notification-icon {
+  background: url('../../../images/comments.png') 0 7px no-repeat scroll transparent;
+  padding: 0 0 0 15px;
+}
+
+.cmnc-message-count {
+  margin-left: 15px;
+  color: white;
+  font-weight: bold;
+}
+
+.cmnc-message-count-unread .cmnc-message-count {
+  padding: 3px;
+  background-color: red;
+  color: white;
+}
+
+.cmnc-message-count-none .cmnc-message-count  {
+  padding: 3px;
+  color: white;
+}
+
+.cmnc-view-all {
+  margin-top: 10px;
+  background-color: #c0c0c0;
+  text-align: center;
+  padding: 10px 0;
+}
+
+.view-my-notifications .user-picture {
+  float: left;
+  margin-right: 10px;
+}
+
+.view-my-notifications .views-field-timestamp {
+  display: block;
+  margin-left: 55px;
+
+}
+
+.view-my-notifications .cmnc-viewed-No {
+  background-color: #eceff5;
+}
+
+.view-my-notifications .cmnc-viewed-Yes {
+
+}
+
+/* Overrides for when the icon is in the utility links block */
+ul.commons-utility-links .cmnc-notification-icon {
+  background: url('../../../images/comments.png') 0 0 no-repeat scroll transparent;
+}

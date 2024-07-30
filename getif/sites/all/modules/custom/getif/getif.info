@@ -1,0 +1,19 @@
+name = GeTiF
+description = "Modulo di gestione di Tirocini e Frequenze Volontarie dell'IZSLER"
+core = 7.x
+package = Invisiblefarm
+
+; dependencies[] = ctools
+; dependencies[] = entity
+; dependencies[] = entityreference
+; dependencies[] = date
+; dependencies[] = date_api
+; dependencies[] = date_popup
+
+files[] = getif.info
+files[] = getif.module
+; files[] = getif.install
+scripts[] = js/getif.js
+
+; Information added by drupal.org packaging script on 2013-05-16
+version = "7.x-1.0"

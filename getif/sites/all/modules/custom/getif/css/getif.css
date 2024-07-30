@@ -1,0 +1,259 @@
+.bootstrap .page-head .page-title {
+	float: left;
+	clear: left;
+	position: relative;
+	margin: 0 0 15px;
+	margin: 0 0 .9375rem;
+	font: 18pt Open Sans,Helvetica,Arial,sans-serif;
+	color: #363a41;
+	white-space: nowrap;
+	padding: 5px 0;
+	padding: .3125rem 0;
+	line-height: 1.2;
+}
+
+.bootstrap .page-head .toolbarBox {
+	position: absolute;
+	background-color: transparent!important;
+	right: 0;
+}
+
+label {
+
+}
+
+
+.item-list li.active {
+	 font-weight: bold;
+ }
+
+ul, ol {
+	padding-inline-start: 0px;
+	list-style: none;
+}
+
+.btn {
+	background: none;
+}
+
+.float-right {
+	float: right;
+}
+
+.form-control.form-date {
+	width: 100px;!important
+}
+
+
+.form-item-gender.radio {
+	display: inline-block;
+	padding-right: 10px;
+}
+
+/*.btn:before.glyphicon {
+	font-family: Glyphicons Halflings
+}
+.glyphicon {
+	font-family: inherit;
+}*/
+
+#tabella li { background: #eee; }
+#tabella li:nth-child(odd) { background: #fff; }
+
+.pagination > .active > a, .pagination > .active > span, .pagination > .active > a:hover, .pagination > .active > span:hover, .pagination > .active > a:focus, .pagination > .active > span:focus {
+	background-color: #7b7b7b!important;
+	border-color: #7d7d7d!important;
+}
+
+.card .main:hover {
+	background: #3c3c3c;
+}
+
+.menu.nav .active {
+	background: #eee;
+}
+
+/* INPUT */
+
+input.currency {
+	text-align: right;
+	padding-right: 15px;
+}
+.input-group {
+	max-width:600px;
+}
+.input-group-addon {
+	padding: 6px 12px
+}
+
+.container-inline-date .date-padding {
+	float: unset;
+}
+
+.page-header .alert-block {
+	margin-left: 220px;
+}
+
+/* Datepicker */
+#ui-datepicker-div {
+	display:none;
+}
+
+/* Button */
+.btn-basic {
+	background-color: #ddd
+}
+
+
+/* Notifications */
+.rw-number-notification {
+	position:absolute;
+	top: -7px;
+	right:-6px;
+	padding: 3px 3px 2px 3px;
+	background-color:red;
+	color:white;
+	font-family: arial;
+	font-weight:bold;
+	font-size: 10px;
+	border-radius: 4px;
+	box-shadow:1px 1px 1px silver;
+}
+.container-msgs {
+	padding: 10px!important;
+}
+
+.header-msgs {
+	text-align: center;
+	padding: 10px;
+	margin-bottom: 10px;
+	border-bottom: 1px solid #E5E5E5;
+}
+
+ul.list-msgs {
+	list-style-type: disc;
+}
+
+.item-msgs {
+	text-align: left;
+	padding: 5px;
+}
+
+div.secondary {
+	float:right;
+}
+
+.footer-msgs {
+	text-align: center;
+	padding: 10px;
+	margin-top: 10px;
+	border-top: 1px solid #E5E5E5;
+}
+
+
+tr.disabled {
+	opacity: 0.6;
+}
+
+tr.disabled a {
+	pointer-events: none;
+	cursor: default;
+}
+
+.flip {
+
+	/* Safari */
+	-webkit-transform: rotate(-180deg);
+
+	/* Firefox */
+	-moz-transform: rotate(-180deg);
+
+	/* IE */
+	-ms-transform: rotate(-180deg);
+
+	/* Opera */
+	-o-transform: rotate(-180deg);
+
+	/* Internet Explorer */
+	filter: progid:DXImageTransform.Microsoft.BasicImage(rotation=6);
+
+}
+
+.el1 {
+	display: inline-block;
+	padding:5px;
+	background-color: #ff3f4e;
+	color: #fff;
+	border-radius: 4px;
+	overflow-wrap: break-word;
+	word-wrap: break-word;
+	hyphens: auto;
+}
+.el2 {
+	display: inline-block;
+	padding:5px;
+	background-color: orange;
+	color: #fff;
+	border-radius: 4px;
+	overflow-wrap: break-word;
+	word-wrap: break-word;
+	hyphens: auto;
+}
+.el3 {
+	display: inline-block;
+	padding:5px;
+	background-color: #4d6a8b;
+	color: #fff;
+	border-radius: 4px;
+	overflow-wrap: break-word;
+	word-wrap: break-word;
+	hyphens: auto;
+}
+.el4 {
+	display: inline-block;
+	padding:5px;
+	background-color: #40801e;
+	color: #fff;
+	border-radius: 4px;
+	overflow-wrap: break-word;
+	word-wrap: break-word;
+	hyphens: auto;
+}
+.el5 {
+	display: inline-block;
+	padding:5px;
+	background-color: #de26ff;
+	color: #fff;
+	border-radius: 4px;
+	overflow-wrap: break-word;
+	word-wrap: break-word;
+	hyphens: auto;
+}
+
+td.details-control {
+	padding-bottom: 25px!important;
+	background: url('../img/details_open.png') no-repeat 1% 95%;
+	cursor: pointer;
+}
+tr.shown td.details-control {
+	background: url('../img/details_close.png') no-repeat 1% 95%;
+}
+
+.panel-heading-2 {
+	padding:0 0 0 20px;
+	background-color: #f5f5f5;
+	text-align:left
+}
+.popover {
+	max-width: none!important;
+}
+
+ul.intended {
+	padding-inline-start: 20px;
+	list-style: outside;
+}
+
+
+div.table-responsive {
+	width:100%;
+}

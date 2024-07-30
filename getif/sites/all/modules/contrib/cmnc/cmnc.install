@@ -1,0 +1,111 @@
+<?php
+/**
+ * @file
+ * Installation hooks for the module.
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function cmnc_schema() {
+  $schema['cmnc'] = array(
+    'description' => 'Storage of all sent messages for use in Commons Message Notification Center',
+    'fields' => array(
+      'id' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+        'description' => 'Primary Key: Numeric message notification ID.',
+      ),
+      'mid' => array(
+        'description' => 'The message ID of the originating message.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'unsigned' => TRUE,
+      ),
+      'gid' => array(
+        'description' => 'The group ID of the originating message.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'unsigned' => TRUE,
+      ),
+      'receiver' => array(
+        'description' => 'The user ID of the acting user.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'unsigned' => TRUE,
+      ),
+      'notifier' => array(
+        'description' => 'The notification method used to send the notification.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'viewed' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'size' => 'tiny',
+        'description' => 'Boolean for whether the message has already been viewed.',
+      ),
+      'timestamp' => array(
+        'description' => 'When the message instance was recorded.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'unsigned' => TRUE,
+        'default' => 0,
+      ),
+    ),
+    'primary key' => array('id'),
+  );
+  return $schema;
+}
+
+/**
+ * Implements hook_install().
+ */
+function cmnc_install() {
+  // Grant the use CMNC permission to authenticated users by default.
+  user_role_grant_permissions(2, array(CMNC_PERM_USE));
+
+  // Update the weight of this module to run after the commons_notify module.
+  // We need to do this because the commons_notify module removes all links
+  // added by other modules.
+  db_update('system')
+    ->fields(array('weight' => '10'))
+    ->condition('name', 'cmnc')
+    ->execute();
+
+  // Force this feature to reset itself.
+  // Necessary because some field settings are not initialized correctly
+  // when the module first installs.
+  $revert = array(
+    'cmnc' => array(
+      'features_overrides',
+      'variable',
+      'views_view',
+    ),
+  );
+  features_revert($revert);
+  cache_clear_all();
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function cmnc_uninstall() {
+  // Remove variables.
+  variable_del('cmnc_max_message_age');
+  variable_del('cmnc_delete_expired');
+  variable_del('cmnc_show_icon_in_utility_links');
+
+  // Remove CMNC from the list of enabled notifiers.
+  $existing_notifiers = variable_get('message_subscribe_default_notifiers', array());
+  if (isset($existing_notifiers['cmnc'])) {
+    unset($existing_notifiers['cmnc']);
+    variable_set('message_subscribe_default_notifiers', $existing_notifiers);
+  }
+}

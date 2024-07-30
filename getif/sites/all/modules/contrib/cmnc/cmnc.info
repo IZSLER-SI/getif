@@ -1,0 +1,45 @@
+name = Commons Message Notification Center
+description = Provides a centralized notification center for users to view notification events.
+core = 7.x
+package = Commons Message Notification Center
+project = cmnc
+php = 5.3
+dependencies[] = commons_notify
+dependencies[] = ctools
+dependencies[] = features_override
+dependencies[] = message
+dependencies[] = message_notify
+dependencies[] = qtip
+dependencies[] = strongarm
+dependencies[] = views
+configure = admin/config/system/cmnc
+features[ctools][] = message_notify:notifier:1
+features[ctools][] = strongarm:strongarm:1
+features[ctools][] = views:views_default:3.0
+features[features_api][] = api:2
+features[features_override_items][] = variable.field_bundle_settings_message__commons_notify_comment_created
+features[features_override_items][] = variable.field_bundle_settings_message__commons_notify_node_created_no_groups
+features[features_overrides][] = field_instance.message-commons_follow_user_user_followed-field_target_users.display|cmnc_message
+features[features_overrides][] = field_instance.message-commons_notify_comment_created-field_message_rendered_body.display|cmnc_message
+features[features_overrides][] = message_type.commons_notify_comment_created.message_text|und|2
+features[features_overrides][] = message_type.commons_notify_node_created.message_text|und|2
+features[features_overrides][] = message_type.commons_notify_node_created_no_groups.message_text|und|2
+features[features_overrides][] = variable.field_bundle_settings_message__commons_notify_comment_created.value|extra_fields|display|message__message_text__0|cmnc_message
+features[features_overrides][] = variable.field_bundle_settings_message__commons_notify_comment_created.value|extra_fields|display|message__message_text__1|cmnc_message
+features[features_overrides][] = variable.field_bundle_settings_message__commons_notify_comment_created.value|extra_fields|display|message__message_text__1|message_notify_email_body
+features[features_overrides][] = variable.field_bundle_settings_message__commons_notify_comment_created.value|extra_fields|display|message__message_text__1|message_notify_email_subject
+features[features_overrides][] = variable.field_bundle_settings_message__commons_notify_comment_created.value|extra_fields|display|message__message_text__2
+features[features_overrides][] = variable.field_bundle_settings_message__commons_notify_node_created_no_groups.value
+features[variable][] = qtip_hide_event_type
+features[variable][] = qtip_show_event_type
+features[variable][] = qtip_target_position
+features[views_view][] = my_notifications
+features_exclude[dependencies][views_content] = views_content
+files[] = plugins/notifier/cmnc/CommonsMessageCenterMessage.class.php
+
+; Information added by Drupal.org packaging script on 2013-12-12
+version = "7.x-1.0-alpha3"
+core = "7.x"
+project = "cmnc"
+datestamp = "1386808105"
+

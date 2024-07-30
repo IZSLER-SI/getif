@@ -1,0 +1,194 @@
+<?php
+/**
+ * @file
+ * Installation hooks for the module.
+ */
+
+/**
+ * Implements hook_requirements().
+ */
+function cmnc_ui_requirements($phase) {
+  if ($phase == 'runtime') {
+    $t = get_t();
+    $status = array(
+      'cmnc_ui_notifiers' => array(
+        'title' => $t('CMNC Message Subscribe Default Notifiers'),
+        'value' => $t('OK'),
+        'severity' => REQUIREMENT_OK,
+      ),
+      'cmnc_ui_defaults' => array(
+        'title' => $t('CMNC User Default Settings'),
+        'value' => $t('OK'),
+        'severity' => REQUIREMENT_OK,
+      ),
+    );
+
+    $existing_notifiers = variable_get('message_subscribe_default_notifiers', array());
+    if (isset($existing_notifiers['cmnc'])) {
+      $message1 = $t('The CMNC module is currently configures as a default notifier.  This will override any user-level notification settings.');
+      $message2 = $t('It is recommended to remove the CMNC module from the list of enabled default notifiers. See ') . l($t('Message subscribe settings'), 'admin/config/system/message-subscribe');
+
+      $status['cmnc_ui_notifiers']['severity'] = REQUIREMENT_WARNING;
+      $status['cmnc_ui_notifiers']['value'] = $t('Configuration Issue');
+      $status['cmnc_ui_notifiers']['description'] = $message1 . '<br />' . $message2;
+    }
+
+    $users_have_default_settings = cmnc_ui_check_user_default_settings();
+    if (!$users_have_default_settings) {
+      $message1 = $t('Some user accounts are missing default notification settings.');
+      $message2 = $t('It is recommended that you run the "Initialize users" routine so that all user accounts have a default notification setting.  See ') . l($t('Notification Center Per-User Settings'), 'admin/config/system/cmnc/ui');
+
+      $status['cmnc_ui_defaults']['severity'] = REQUIREMENT_WARNING;
+      $status['cmnc_ui_defaults']['value'] = $t('Configuration Issue');
+      $status['cmnc_ui_defaults']['description'] = $message1 . '<br />' . $message2;
+    }
+    return $status;
+  }
+}
+
+/**
+ * Implements hook_install().
+ */
+function cmnc_ui_install() {
+  // Add "message subscribe email" field to users.
+  $t = get_t();
+  $field_name = 'cmnc_subscribe_message_center';
+  if (!field_info_field($field_name)) {
+    $field = array(
+      'field_name' => $field_name,
+      'type' => 'list_boolean',
+      'entity_types' => array('user'),
+      'cardinality' => 1,
+      'settings' => array(
+        'allowed_values' => array(
+          0 => $t("Don't use notification center"),
+          1 => $t('Use notification center'),
+        ),
+        'allowed_values_function' => '',
+      ),
+    );
+    field_create_field($field);
+  }
+
+  if (!field_info_instance('user', $field_name, 'user')) {
+    $instance = array(
+      'field_name' => $field_name,
+      'bundle' => 'user',
+      'entity_type' => 'user',
+      'label' => $t('Use notification center'),
+      'description' => $t('Notification center option will be checked automatically when subscribing to something.'),
+      'required' => FALSE,
+      'display_label' => 1,
+      'default_value' => array(0 => array('value' => 1)),
+      'widget' => array(
+        'settings' => array(),
+        'type' => 'options_onoff',
+        'weight' => 0,
+      ),
+    );
+    field_create_instance($instance);
+  }
+
+  // Update the message subscribe module settings (if at default values).
+  $notifiers = variable_get('message_subscribe_default_notifiers', array());
+  $notifiers['cmnc'] = 'cmnc';
+  variable_set('message_subscribe_default_notifiers', $notifiers);
+
+  // Reset the message setting tabs back to their defaults.
+  $people_view = variable_get('message_commons_follow_user', 'commons_follow_user:default');
+  if ($people_view == 'commons_follow_user:default') {
+    variable_set('message_commons_follow_user', 'cmnc_users_that_a_user_follows:default');
+  }
+  $other_content_view = variable_get('message_commons_follow_node', 'commons_follow_node:default');
+  if ($other_content_view == 'commons_follow_node:default') {
+    variable_set('message_commons_follow_node', 'cmnc_content_a_user_follows:default');
+  }
+  $group_view = variable_get('message_commons_follow_group', 'commons_follow_node:default');
+  if ($group_view == 'commons_follow_node:default') {
+    variable_set('message_commons_follow_group', 'cmnc_content_a_user_follows:default');
+  }
+  $topic_view = variable_get('message_commons_follow_term', 'commons_follow_taxonomy_term:default');
+  if ($topic_view == 'commons_follow_taxonomy_term:default') {
+    variable_set('message_commons_follow_term', 'cmnc_topics_a_user_follows:default');
+  }
+
+  // Update the weight of this module to run after the message_subscribe hooks.
+  db_update('system')
+    ->fields(array('weight' => '10'))
+    ->condition('name', 'cmnc_ui')
+    ->execute();
+
+  // Clear the views cache so that the new views are loaded.
+  views_invalidate_cache();
+
+  // Clear all caches.
+  cache_clear_all();
+
+  // Display a reminder message to the user to generate default settings
+  // for existing site users.
+  $users_have_default_settings = cmnc_ui_check_user_default_settings();
+  if (!$users_have_default_settings) {
+    $message1 = $t('The CMNC Per-User Settings module was successfully enabled.');
+    $message2 = $t('It is recommended that you run the "Initialize users" routine to ensure that all user accounts have a default notification setting.  See ') . l($t('Notification Center Per-User Settings'), 'admin/config/system/cmnc/ui');
+    drupal_set_message($message1 . '<br />' . $message2);
+  }
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function cmnc_ui_uninstall() {
+  // Delete field instance from user.
+  $field_name = 'cmnc_subscribe_message_center';
+  $field = field_info_instance('user', $field_name, 'user');
+  field_delete_instance($field);
+
+  // Reset the message_subscribe module to it's default settings.
+  $notifiers = variable_get('message_subscribe_default_notifiers', array());
+  if (isset($notifiers['cmnc'])) {
+    unset($notifiers['cmnc']);
+    variable_set('message_subscribe_default_notifiers', $notifiers);
+  }
+  $people_view = variable_get('message_commons_follow_user', 'commons_follow_user:default');
+  if ($people_view == 'cmnc_users_that_a_user_follows:default') {
+    variable_set('message_commons_follow_user', 'commons_follow_user:default');
+  }
+  $other_content_view = variable_get('message_commons_follow_node', 'commons_follow_node:default');
+  if ($other_content_view == 'cmnc_content_a_user_follows:default') {
+    variable_set('message_commons_follow_node', 'commons_follow_node:default');
+  }
+  $group_view = variable_get('message_commons_follow_group', 'commons_follow_node:default');
+  if ($group_view == 'cmnc_content_a_user_follows:default') {
+    variable_set('message_commons_follow_group', 'commons_follow_node:default');
+  }
+  $topic_view = variable_get('message_commons_follow_term', 'commons_follow_taxonomy_term:default');
+  if ($topic_view == 'cmnc_topics_a_user_follows:default') {
+    variable_set('message_commons_follow_term', 'commons_follow_taxonomy_term:default');
+  }
+
+  // Remove flags defined by this module.
+  drupal_load('module', 'cmnc_ui');
+  $flags = cmnc_ui_flag_default_flags();
+  foreach ($flags as $machine_name => $flag) {
+    $flag_instance = flag_get_flag($machine_name);
+    if ($flag_instance) {
+      $flag_instance->delete();
+    }
+  }
+
+  // Clear the views cache to deregister our views.
+  views_invalidate_cache();
+
+  // Clear all caches.
+  cache_clear_all();
+}
+
+/**
+ * Update module weight.
+ */
+function cmnc_ui_update_7100() {
+  db_update('system')
+    ->fields(array('weight' => '10'))
+    ->condition('name', 'cmnc_ui')
+    ->execute();
+}

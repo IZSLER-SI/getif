@@ -1,0 +1,15 @@
+name = Per-user Configuration UI
+description = Provides a per-user notifications configuration UI.
+core = 7.x
+package = Commons Message Notification Center
+project = cmnc
+php = 5.3
+dependencies[] = cmnc
+dependencies[] = views
+
+; Information added by Drupal.org packaging script on 2013-12-12
+version = "7.x-1.0-alpha3"
+core = "7.x"
+project = "cmnc"
+datestamp = "1386808105"
+

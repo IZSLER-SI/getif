@@ -1,0 +1,2161 @@
+<?php
+
+/**
+ * hook _init
+ * @return multitype:multitype:string
+ */
+
+function getif_init() {
+    ctools_include('ajax');
+    ctools_include('modal');
+    // Add CTools' javascript to the page.
+    ctools_modal_add_js();
+    // redirect if not logged in
+    if (user_is_anonymous() && arg(0) != 'user') {
+        drupal_goto('user/login');
+    }
+    setlocale(LC_ALL, 'it_IT.UTF-8');
+    setlocale(LC_MONETARY, 'it_IT');
+    drupal_add_library('system', 'ui');
+    module_load_include('inc', 'getif', 'getif.utility');
+    /* import js */
+    $module_path = drupal_get_path('module', 'getif');
+    $full_path = $module_path .'/js/jquery.timeMask.min.js';
+    drupal_add_js($full_path);
+    drupal_add_js($module_path . '/js/bootstrap-toggle.js');
+    drupal_add_css($module_path. '/css/bootstrap-toggle.css');
+    $full_path = $module_path .'/css/bootstro.css';
+    drupal_add_css($full_path);
+    $full_path = $module_path .'/js/bootstro.js';
+    drupal_add_js($full_path,'file');
+    // disabilita il tasto Enter per il submit
+    drupal_add_js("(function($) {
+        Drupal.behaviors.DisableInputEnter = {
+          attach: function(context, settings) {
+            $('input', context).once('disable-input-enter', function() {
+              $(this).keypress(function(e) {
+                if (e.keyCode == 13) {
+                  e.preventDefault();
+                }
+              });
+            });
+          }
+        }
+    }(jQuery));", array('type' => 'inline'));
+    drupal_add_js(drupal_get_path('module', 'getif') . '/js/jquery.mask.js');
+
+    drupal_add_js("
+        (function ($) {
+            'use strict';
+            Drupal.behaviors.module = {
+                attach: function() {  
+                    $('button.btn-disable').each(function( index ) {
+                        if(this.id) {
+                        Drupal.ajax[this.id].beforeSerialize = function () {
+                            if(confirm('Confermi la disattivazione?'))
+                                return true;
+                            else
+                                return false;
+                        }
+                        }
+                    });
+                    $('button.btn-enable').each(function( index ) {
+                        if(this.id) {
+                        Drupal.ajax[this.id].beforeSerialize = function () {
+                            if(confirm('Confermi l\'attivazione?'))
+                                return true;
+                            else
+                                return false;
+                        }
+                        }
+                    });
+                    $('button.btn-remove').each(function( index ) {
+                        if(this.id) {
+                        Drupal.ajax[this.id].beforeSerialize = function () {
+                            if(confirm('Confermi l\'eliminazione?'))
+                                return true;
+                            else
+                                return false;
+                        }
+                        }
+                    });
+                }
+            }  
+        }(jQuery));", array('type' => 'inline'));
+
+    drupal_add_js('
+          jQuery(function($) {   
+             $(document).ready(function(){
+                $(".help-btn").click(function(){
+                    bootstro.start(".bootstro", {
+                        nextButtonText : \'Succ. »\',
+                        prevButtonText : \'Prec. «\',
+                        finishButtonText : \'X Chiudi Help\',
+                        onComplete : function(params)
+                        {
+                            //alert("Reached end of introduction with total " + (params.idx + 1)+ " slides");
+                        },
+                        onExit : function(params)
+                        {
+                            //alert("Introduction stopped at slide #" + (params.idx + 1));
+                        },
+                    });    
+                });
+                
+             });
+		  });',array('type' => 'inline','scope' => 'footer'));
+    drupal_add_js('
+          jQuery(function($) {   
+             $(document).ready(function(){
+                $(".info-btn").click(function(){
+                    bootstro.start(".g-bootstro", {
+                        nextButtonText : \'Succ. »\',
+                        prevButtonText : \'Prec. «\',
+                        finishButtonText : \'X Chiudi Help\',
+                        onComplete : function(params)
+                        {
+                            //alert("Reached end of introduction with total " + (params.idx + 1)+ " slides");
+                        },
+                        onExit : function(params)
+                        {
+                            //alert("Introduction stopped at slide #" + (params.idx + 1));
+                        },
+                    });    
+                });
+                
+             });
+		  });',array('type' => 'inline','scope' => 'footer'));
+
+    drupal_add_js('
+          jQuery(function($) {   
+             $(document).ready(function(){
+                $("#navbar").addClass("g-bootstro");
+                $("#navbar").attr("data-bootstro-title","Top Area");
+                $("#navbar").attr("data-bootstro-content","Attraverso quest\'area è possibile consultare le notifiche ed effettuare il logout.");
+                $("#navbar").attr("data-bootstro-width","400px");
+                $("#navbar").attr("data-bootstro-placement","bottom");
+                $("#block-system-main").addClass("g-bootstro");
+                $("#block-system-main").attr("data-bootstro-title","Contenuto");
+                $("#block-system-main").attr("data-bootstro-content","Quest\'area contiene il contenuto della pagina. Il pulsante &quot;?&quot; attiva l\'help del contenuto della pagina");
+                $("#block-system-main").attr("data-bootstro-width","400px");
+                $("#block-system-main").attr("data-bootstro-placement","bottom");
+                $(".region-footer").addClass("g-bootstro");
+                $(".region-footer").attr("data-bootstro-title","Footer");
+                $(".region-footer").attr("data-bootstro-content","Quest\'area contiene le domande frequenti.");
+                $(".region-footer").attr("data-bootstro-width","400px");
+                $(".region-footer").attr("data-bootstro-placement","top");
+             });
+		  });',array('type' => 'inline','scope' => 'footer'));
+}
+
+
+/**
+ * hook _theme
+ * @return multitype:multitype:string
+ */
+function getif_theme()
+{
+    return array(
+        'user_list_view_form' => array('render element' => 'form'),
+        'user_form' => array('render element' => 'form'),
+        'lperson_host_form' => array('render element' => 'form'),
+        'lperson_promoter_form' => array('render element' => 'form'),
+        'lperson_promoter_list_view_form' => array('render element' => 'form'),
+        'lperson_promoter_branch_manage_form' => array('render element' => 'form'),
+        'lperson_host_branch_manage_form' => array('render element' => 'form'),
+        'lperson_promoter_branch_form' => array('render element' => 'form'),
+        'lperson_host_branch_form' => array('render element' => 'form'),
+        'lperson_host_child_branch_form' => array('render element' => 'form'),
+        'lperson_host_budget_manage_form' => array('render element' => 'form'),
+        'lperson_host_budget_form' => array('render element' => 'form'),
+        'lperson_host_branch_calendar_form' => array('render element' => 'form'),
+        'person_list_view_form' => array('render element' => 'form'),
+        'person_form' => array('render element' => 'form'),
+        'vinternship_list_view_form' => array('render element' => 'form'),
+        'vinternship_1_form' => array('render element' => 'form'),
+        'vinternship_2_form' => array('render element' => 'form'),
+        'vinternship_3_form' => array('render element' => 'form'),
+        'vinternship_4_form' => array('render element' => 'form'),
+        'vinternship_manage_form' => array('render element' => 'form'),
+        'vinternship_attendance_form' => array('render element' => 'form'),
+        'internship_list_view_form' => array('render element' => 'form'),
+        'internship_1_form' => array('render element' => 'form'),
+        'internship_2_form' => array('render element' => 'form'),
+        'internship_3_form' => array('render element' => 'form'),
+        'internship_4_form' => array('render element' => 'form'),
+        'internship_manage_form' => array('render element' => 'form'),
+        'internship_attendance_form' => array('render element' => 'form'),
+        'intern_form' => array('render element' => 'form'),
+        'intern_list_view_form' => array('render element' => 'form'),
+        'vintern_form' => array('render element' => 'form'),
+        'vintern_list_view_form' => array('render element' => 'form'),
+        'report_form' => array('render element' => 'form'),
+        'elenco_tirocini_form' => array('render element' => 'form'),
+        'presenze_servizio_form' => array('render element' => 'form'),
+        'report_corso_frequentato_form' => array('render element' => 'form'),
+        'report_titolo_studio_form' => array('render element' => 'form'),
+        'tirocini_convenzione_form' => array('render element' => 'form'),
+        'elenco_laureati_form' => array('render element' => 'form'),
+        'elenco_frequenze_form' => array('render element' => 'form'),
+        'report_ore_tutor_form' => array('render element' => 'form'),
+        'agreement_form' => array('render element' => 'form'),
+        'agreement_list_view_form' => array('render element' => 'form'),
+        'delete_record_form' => array('render element' => 'form'),
+        'help_form' => array('render element' => 'form')
+    );
+}
+
+
+
+function _overlay_make_link($link_text = '') {
+    // Set a default value if no text in supplied.
+    if (empty($link_text)) {
+        $link_text = 'Link';
+    }
+
+    return '<div>' . l($link_text, 'overlay/nojs', array('attributes' => array('class' => 'ctools-use-modal'))) . '</div>';
+}
+
+
+
+function overlay_form($form, $form_state) {
+    $form['step1'] = array
+    (
+        '#type' => 'radios',
+        '#title' => t('Scegli l\'azione:'),
+        '#name' => 'edit-step1',
+        '#description' => t('Scegli l\'azione:'),
+        '#default_value' => array('images'),
+        '#options' => array
+        (
+            1 => t('voglio creare un nuovo tirocinio'),
+            2 => t('voglio creare una nuova frequenza volontaria')
+        ),
+        '#attributes' => array(
+            'name' => 'edit-step1'
+        ),
+        '#tree' => TRUE,
+        '#prefix' => '<div class="list-group"><div class="list-group-item">',
+        '#suffix' => '</div></div>'
+    );
+
+    $step2_1 = '
+    <ul class="list-group">';
+
+    $step2_1 .='
+        <li class="list-group-item list-group-item-primary">Azioni preliminari:
+            <ul class = "intended">
+                <li>verificare che esista in anagrafe una convenzione attiva tra Soggetto Ospitante e Soggetto Promotore o altrimenti crearne una nuova</li>
+                <li>verificare che esistano in anagrafe o altrimenti creare le figure con i seguenti ruoli presso la/e Struttura/e del Soggetto Ospitante:
+                    <ul class = "intended">
+                        <li>Tutor del Soggetto Ospitante</li>
+                        <li>Responsabili/Referente del Progetto Formativo</li>
+                    </ul>
+                </li>
+                <li>verificare che esista in anagrafe o altrimenti creare la figura con ruolo "Tutor del Soggetto Promotore" presso il Soggetto Promotore o presso il dipartimento/segreteria di questo, risultante in Convenzione</li>
+                <li>verificare che esistano in anagrafe o altrimenti creare le figure che risulteranno firmatarie dei documenti "Nulla Osta" e "Allegato B" e che ricoprano una posizione tra quelle sotto elencate presso il Soggetto Ospitante o presso una struttura di esso:
+                    <ul class = "intended">
+                        <li>Direttore generale</li>
+                        <li>Dirigente</li>
+                        <li>Dirigente responsabile di struttura semplice</li>		
+                        <li>Dirigente responsabile di struttura complessa</li>
+                    </ul>
+                </li>
+                <li>nel caso di tirocinio extracurriculare verificare la presenza di un budget annuale per l\'anno di richiesta del tirocinio.</li>
+            </ul>
+        </li>';
+    $step2_1 .= '
+        <li class="list-group-item list-group-item-primary">Creazione Tirocinio:<ul class = "intended">';
+    $step2_1 .= '<li>dal menu selezionare la voce "Tirocini" e cliccare sul pulsante <span value="Nuovo Tirocinio" class="btn btn-default form-submit icon-before"><span class="icon glyphicon glyphicon-plus" aria-hidden="true"></span>Nuovo Tirocinio</span></li>';
+    $step2_1 .= '<li>seguire la procedura compilando correttamente i dati delle 4 schede e proseguire</li>';
+    $step2_1 .= '<li>controllare il riepilogo dei dati, impostare una data di avvio del tirocinio e proseguire. Da questo momento in poi la pratica di tirocinio non potrà più essere modificata</li>';
+    $step2_1 .= '<li>generare e riallegare i documenti "Nulla osta" e "Allegato B" debitamente firmati</li>';
+    $step2_1 .= '<li>allegare i documenti mancanti (es. Parere favorevole del Dirigente Responsabile della U.O. Ospitante IOFZ-002 E) e confermare l\'avvio del tirocinio</li>';
+    $step2_1 .= '
+            </ul></li>';
+    $step2_1 .= '
+    </ul>';
+    $step2_2 = '
+    <ul class="list-group">';
+
+    $step2_2 .='
+        <li class="list-group-item list-group-item-primary">Azioni preliminari:
+            <ul class = "intended">
+                <li>verificare che esistano in anagrafe o altrimenti creare le figure con ruolo Responsabile/Referente presso la/e Struttura/e selezionata/e</li>
+                <li>verificare che esistano in anagrafe o altrimenti creare le figure che risulteranno firmatarie dei documenti "Nulla Osta" e "Allegato B" e che ricoprano una posizione presso il Soggetto Ospitante o presso una struttura di esso. Le posizioni selezionabili sono:
+                    <ul class = "intended">
+                        <li>Direttore generale</li>
+                        <li>Dirigente</li>
+                        <li>Dirigente responsabile di struttura semplice</li>		
+                        <li>Dirigente responsabile di struttura complessa</li>
+                    </ul>
+                </li>
+            </ul>
+        </li>';
+    $step2_2 .= '
+        <li class="list-group-item list-group-item-primary">Creazione Frequenza volontaria:<ul class = "intended">';
+    $step2_2 .= '<li>dal menu selezionare la voce "Frequenze volontarie" e cliccare sul pulsante <span value="Nuova Frequenza Volontaria" class="btn btn-default form-submit icon-before"><span class="icon glyphicon glyphicon-plus" aria-hidden="true"></span>Nuova Frequenza Volontaria</span></li>';
+    $step2_2 .= '<li>seguire la procedura compilando correttamente i dati delle 4 schede e proseguire</li>';
+    $step2_2 .= '<li>controllare il riepilogo dei dati e impostare una data di avvio della frequenza volontaria e proseguire. Da questo momento in poi la pratica non potrà più essere modificata</li>';
+    $step2_2 .= '<li>generare e riallegare i documenti "Nulla osta" e "Allegato B" debitamente firmati</li>';
+    $step2_2 .= '<li>allegare i documenti mancanti (es. Parere favorevole del Dirigente Responsabile della U.O. Ospitante IOFZ-003 C) e confermare l\'avvio della frequenza volontaria</li>';
+    $step2_2 .= '
+            </ul></li>';
+    $step2_2 .= '
+    </ul>';
+    $form['c_step2_1'] = array(
+        '#type' => 'container',
+        '#states' => array(
+            'visible' => array(
+                ':input[name="edit-step1"]' => array('value' => 1),
+            ),
+        ),
+        '#tree' => TRUE,
+    );
+    $form['c_step2_1']['step2_1'] = array
+    (
+        '#markup' => $step2_1,
+
+    );
+    $form['c_step2_2'] = array(
+        '#type' => 'container',
+        '#states' => array(
+            'visible' => array(
+                ':input[name="edit-step1"]' => array('value' => 2),
+            ),
+        ),
+        '#tree' => TRUE,
+    );
+    $form['c_step2_2']['step2_2'] = array
+    (
+        '#markup' => $step2_2,
+
+    );
+
+    return $form;
+}
+
+
+
+
+function overlay_callback($ajax) {
+    if ($ajax) {
+        ctools_include('ajax');
+        ctools_include('modal');
+
+        $form_state = array(
+            'ajax' => TRUE,
+            'title' => t('Bisogno di aiuto?'),
+        );
+
+        // Use ctools to generate ajax instructions for the browser to create
+        // a form in a modal popup.
+        $output = ctools_modal_form_wrapper('overlay_form', $form_state);
+
+        // If the form has been submitted, there may be additional instructions
+        // such as dismissing the modal popup.
+        if (!empty($form_state['ajax_commands'])) {
+            $output = $form_state['ajax_commands'];
+        }
+
+        // Return the ajax instructions to the browser via ajax_render().
+        print ajax_render($output);
+        drupal_exit();
+    }
+    else {
+        return drupal_get_form('mymodule_form');
+    }
+}
+
+
+/**
+ * hook_permission
+ * @return array
+ */
+function getif_permission() {
+
+    $items = array();
+
+    $items['tutor_permissions'] = array(
+        'title' => t('Permessi del Tutor del Soggetto Ospitante'),
+        'description' => t('Permessi del Tutor del Soggetto Ospitante\''),
+    );
+    $items['operator_permissions'] = array(
+        'title' => t('Permessi dell\'Operatore del Soggetoo Ospitante'),
+        'description' => t('Permessi dell\'Operatore del Soggetoo Ospitante'),
+    );
+    $items['administrator_permissions'] = array(
+        'title' => t('Permessi dell\'Amministratore del Soggetoo Ospitante'),
+        'description' => t('Permessi dell\'Amministratore del Soggetoo Ospitante'),
+    );
+
+    return $items;
+}
+
+function getif_custom_theme()
+{
+    // match node/1
+    if (arg(0) == 'help') {
+        return 'helptheme';
+    }
+}
+
+function getif_admin_paths() {
+    $paths = array(
+        'getif/help' => TRUE
+    );
+    return $paths;
+}
+
+function getif_overlay_paths() {
+    $paths = array(
+        'help' => TRUE
+    );
+    return $paths;
+}
+
+/**
+ * hook _menu
+ * @return multitype:multitype:string
+ */
+function getif_menu()
+{
+    $permessi[] = "tutor_permissions";
+    $permessi[] = "operator_permissions";
+    $permessi[] = "administrator_permissions";
+
+    $items['getif_redirect'] = array(
+        'title' => 'Pagina di redirect',
+        'file' => 'page/getif.redir_page.inc',
+        'page callback' => 'redir_page',
+        'access callback' => 'user_access_or',
+        'access arguments' => array($permessi),
+        'type' => MENU_CALLBACK
+    );
+    /**************************/
+    /***        OVERLAY       */
+    /**************************/
+    $items['overlay/page'] = array(
+        'page callback' => 'overlay_page',
+        'access callback' => TRUE,
+        'type' => MENU_CALLBACK,
+    );
+
+    $items['overlay/%ctools_js'] = array(
+        'page callback' => 'overlay_callback',
+        'page arguments' => array(1),
+        'access callback' => TRUE,
+        'type' => MENU_CALLBACK,
+    );
+
+    /***********************/
+    /***        TEST       */
+    /***********************/
+
+    $items['help'] = array(
+        'title' => 'Help',
+        'file' => 'form/help/getif.help.inc',
+        'page callback' => 'drupal_get_form',
+        'page arguments'   => array('help_form'),
+        'access callback' => 'user_access_or',
+        'access arguments' => array($permessi),
+        'type'             => MENU_CALLBACK,
+    );
+
+    $items['mymodule/page'] = array(
+        'page callback' => 'mymodule_page',
+        'access callback' => TRUE,
+        'type' => MENU_CALLBACK,
+    );
+
+    $items['mymodule/%ctools_js'] = array(
+        'page callback' => 'mymodule_callback',
+        'page arguments' => array(1),
+        'access callback' => TRUE,
+        'type' => MENU_CALLBACK,
+    );
+
+    /****************************/
+    /***        FRONT PAGE      */
+    /****************************/
+
+    $items['dashboard'] = array(
+        'title' => 'Dashboard',
+        'menu_name'        => 'menu-menu-left',
+        'file' => 'page/getif.front_page.inc',
+        'page callback' => 'front_page',
+        'access callback' => 'user_access_or',
+        'access arguments' => array($permessi),
+        'type'             => MENU_NORMAL_ITEM,
+        'weight' => 1
+    );
+
+    /****************************/
+    /***    GESTIONE UTENTI     */
+    /****************************/
+
+    $items['guser/list'] = array(
+        'title'            => 'Utenti',
+        'description'      => t('Lista utenti'),
+        'menu_name'        => 'menu-menu-left',
+        'weight'           => 1,
+        'file'             => 'form/user/getif.user_list_view.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('user_list_view_form'),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'type'             => MENU_NORMAL_ITEM,
+        'mlid'             => 1,
+        'weight' => 10
+    );
+    $items['guser/new'] = array(
+        'title'            => 'Utente',
+        'description'      => t('Utente'),
+        'file'             => 'form/user/getif.user.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('user_form',1),
+        'access callback'  => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'plid'             => 1,
+    );
+    $items['guser/edit'] = array(
+        'title'            => 'Utente',
+        'description'      => t('Utente'),
+        'file'             => 'form/user/getif.user.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('user_form',1),
+        'access callback'  => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'plid'             => 1,
+    );
+    /************************/
+    /***        Report      */
+    /************************/
+    $items['report'] = array(
+        'title'            => 'Report',
+        'description'      => t(''),
+        'menu_name'        => 'menu-menu-left',
+        'weight'           => 1,
+        'file'             => 'form/report/getif.report.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('report_form',1),
+        'access callback'  => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'type'             => MENU_NORMAL_ITEM,
+        'mlid'             => 1,
+        'weight' => 200
+    );
+
+    $items['report/elenco_tirocini'] = array(
+        'title'            => 'Elenco tirocini',
+        'description'      => t('Elenco tirocini'),
+        'file'             => 'form/report/getif.elenco_tirocini.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('elenco_tirocini_form',1),
+        'access callback' => 'user_access_or',
+        'access arguments' => array($permessi),
+        'type' => MENU_CALLBACK
+    );
+    $items['report/presenze_servizio'] = array(
+        'title'            => 'Presenze in orario di servizio',
+        'description'      => t('Presenze in orario di servizio'),
+        'file'             => 'form/report/getif.presenze_servizio.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('presenze_servizio_form',1),
+        'access callback'  => 'user_access_or',
+        'access arguments' => array($permessi),
+        'type' => MENU_CALLBACK
+    );
+    $items['report/corso_frequentato/0'] = array(
+        'title'            => 'Tirocini per corso frequentato/struttura di attivazione',
+        'description'      => t('Tirocini per corso frequentato/struttura di attivazione'),
+        'file'             => 'form/report/getif.report_corso_frequentato.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('report_corso_frequentato_form',2),
+        'access callback'  => 'user_access_or',
+        'access arguments' => array($permessi),
+        'type' => MENU_CALLBACK
+    );
+    $items['report/corso_frequentato/1'] = array(
+        'title'            => 'Frequenze per corso frequentato/struttura di attivazione',
+        'description'      => t('Frequenze per corso frequentato/struttura di attivazione'),
+        'file'             => 'form/report/getif.report_corso_frequentato.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('report_corso_frequentato_form',2),
+        'access callback'  => 'user_access_or',
+        'access arguments' => array($permessi),
+        'type' => MENU_CALLBACK
+    );
+
+    $items['report/titolo_studio/0'] = array(
+        'title'            => 'Tirocini per titolo di studio/struttura di attivazione',
+        'description'      => t('Tirocini per titolo di studio/struttura di attivazione'),
+        'file'             => 'form/report/getif.report_titolo_studio.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('report_titolo_studio_form',2),
+        'access callback'  => 'user_access_or',
+        'access arguments' => array($permessi),
+        'type' => MENU_CALLBACK
+    );
+
+    $items['report/titolo_studio/1'] = array(
+        'title'            => 'Frequenze per titolo di studio/struttura di attivazione',
+        'description'      => t('Frequenze per titolo di studio/struttura di attivazione'),
+        'file'             => 'form/report/getif.report_titolo_studio.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('report_titolo_studio_form',2),
+        'access callback'  => 'user_access_or',
+        'access arguments' => array($permessi),
+        'type' => MENU_CALLBACK
+    );
+
+    $items['report/tirocini-convenzione'] = array(
+        'title'            => t('Tirocini attivati per convenzione collettiva'),
+        'description'      => t('Tirocini attivati per convenzione collettiva '),
+        'file'             => 'form/report/getif.tirocini_convenzione.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('tirocini_convenzione_form',1),
+        'access callback'  => 'user_access_or',
+        'access arguments' => array($permessi),
+        'type' => MENU_CALLBACK
+    );
+
+    $items['report/elenco_laureati'] = array(
+        'title'            => t('Elenco dei laureati che svolgono tirocini'),
+        'description'      => t('Elenco dei laureati che svolgono tirocini'),
+        'file'             => 'form/report/getif.elenco_laureati.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('elenco_laureati_form',1),
+        'access callback'  => 'user_access_or',
+        'access arguments' => array($permessi),
+        'type' => MENU_CALLBACK
+    );
+
+    $items['report/elenco_frequenze'] = array(
+        'title'            => 'Elenco delle frequenze volontarie',
+        'description'      => t('Elenco delle frequenze volontarie'),
+        'file'             => 'form/report/getif.elenco_frequenze.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('elenco_frequenze_form',1),
+        'access callback'  => 'user_access_or',
+        'access arguments' => array($permessi),
+        'type' => MENU_CALLBACK
+    );
+
+    $items['report/ore_tutor/0'] = array(
+        'title'            => 'Ore attività tutor',
+        'description'      => t('Attestazione ore attività tutor'),
+        'file'             => 'form/report/getif.report_ore_tutor.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('report_ore_tutor_form',2),
+        'access callback'  => 'user_access_or',
+        'access arguments' => array($permessi),
+        'type' => MENU_CALLBACK
+    );
+
+    $items['report/ore_tutor/1'] = array(
+        'title'            => 'Attestazione ore attività tutor',
+        'description'      => t('Attestazione ore attività tutor'),
+        'file'             => 'form/report/getif.report_ore_tutor.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('report_ore_tutor_form',2),
+        'access callback'  => 'user_access_or',
+        'access arguments' => array($permessi),
+        'type' => MENU_CALLBACK
+    );
+
+    /***************************************/
+    /***        FREQUENZE VOLONTARIE       */
+    /***************************************/
+    $items['vinternship'] = array(
+        'title'            => 'Frequenze volontarie',
+        'description'      => t('Lista Frequenze Volontarie'),
+        'menu_name'        => 'menu-menu-left',
+        'weight'           => 1,
+        'file'             => 'form/vinternship/getif.vinternship_list_view.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('vinternship_list_view_form',1),
+        'access callback' => 'user_access_or',
+        'access arguments' => array($permessi),
+        'type'             => MENU_NORMAL_ITEM,
+        'mlid'             => 1,
+        'weight' => 13
+    );
+    $items['vinternship/list'] = array(
+        'title'            => 'Frequenze volontarie',
+        'description'      => t('Lista Frequenze Volontarie'),
+        'menu_name'        => 'menu-menu-left',
+        'weight'           => 1,
+        'file'             => 'form/vinternship/getif.vinternship_list_view.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('vinternship_list_view_form'),
+        'access callback' => 'user_access_or',
+        'access arguments' => array($permessi),
+        'plid'             => 1
+    );
+    $items['vinternship/new/1'] = array(
+        'title'            => 'Frequenza Volontaria - Pratica',
+        'description'      => t('Nuova Frequenza Volontaria Scheda FV.1'),
+        'file'             => 'form/vinternship/getif.vinternship_1.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('vinternship_1_form',1,2),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'plid'             => 201
+    );
+    $items['vinternship/edit/1'] = array(
+        'title'            => 'Frequenza Volontaria - Pratica',
+        'description'      => t('Nuova Frequenza Volontaria Scheda FV.1'),
+        'file'             => 'form/vinternship/getif.vinternship_1.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('vinternship_1_form',1,2),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+    );
+    $items['vinternship/view/1'] = array(
+        'title'            => 'Frequenza Volontaria - Pratica',
+        'description'      => t('Nuova Frequenza Volontaria Scheda FV.1'),
+        'file'             => 'form/vinternship/getif.vinternship_1.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('vinternship_1_form',1,2),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+    );
+    $items['vinternship/new/2'] = array(
+        'title'            => 'Frequenza Volontaria - Pratica',
+        'description'      => t('Nuova Frequenza Volontaria Scheda FV.2'),
+        'file'             => 'form/vinternship/getif.vinternship_2.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('vinternship_2_form',1,2),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+    );
+    $items['vinternship/edit/2'] = array(
+        'title'            => 'Frequenza Volontaria - Pratica',
+        'description'      => t('Nuova Frequenza Volontaria Scheda FV.2'),
+        'file'             => 'form/vinternship/getif.vinternship_2.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('vinternship_2_form',1,2),
+        'access callback'  => TRUE,
+    );
+    $items['vinternship/view/2'] = array(
+        'title'            => 'Frequenza Volontaria - Pratica',
+        'description'      => t('Nuova Frequenza Volontaria Scheda FV.2'),
+        'file'             => 'form/vinternship/getif.vinternship_2.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('vinternship_2_form',1,2),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+    );
+    $items['vinternship/new/3'] = array(
+        'title'            => 'Frequenza Volontaria - Pratica',
+        'description'      => t('Nuova Frequenza Volontaria Scheda FV.3'),
+        'weight'           => 1,
+        'file'             => 'form/vinternship/getif.vinternship_3.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('vinternship_3_form',1,2),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+    );
+    $items['vinternship/view/3'] = array(
+        'title'            => 'Frequenza Volontaria - Pratica',
+        'description'      => t('Nuova Frequenza Volontaria Scheda FV.3'),
+        'weight'           => 1,
+        'file'             => 'form/vinternship/getif.vinternship_3.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('vinternship_3_form',1,2),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+    );
+    $items['vinternship/edit/3'] = array(
+        'title'            => 'Frequenza Volontaria - Pratica',
+        'description'      => t('Nuova Frequenza Volontaria Scheda FV.3'),
+        'weight'           => 1,
+        'file'             => 'form/vinternship/getif.vinternship_3.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('vinternship_3_form',1,2),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+    );
+    $items['vinternship/new/4'] = array(
+        'title'            => 'Frequenza Volontaria - Pratica',
+        'description'      => t('Nuova Frequenza Volontaria Scheda FV.4'),
+        'weight'           => 1,
+        'file'             => 'form/vinternship/getif.vinternship_4.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('vinternship_4_form',1,2),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+    );
+    $items['vinternship/edit/4'] = array(
+        'title'            => 'Frequenza Volontaria - Pratica',
+        'description'      => t('Nuova Frequenza Volontaria Scheda FV.4'),
+        'file'             => 'form/vinternship/getif.vinternship_4.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('vinternship_4_form',1,2),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+    );
+    $items['vinternship/view/4'] = array(
+        'title'            => 'Frequenza Volontaria - Pratica',
+        'description'      => t('Nuova Frequenza Volontaria Scheda FV.4'),
+        'file'             => 'form/vinternship/getif.vinternship_4.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('vinternship_4_form',1,2),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+    );
+    $items['vinternship/manage/%'] = array(
+        'title'            => 'Frequenza Volontaria - Gestione',
+        'weight'           => 1,
+        'file'             => 'form/vinternship/getif.vinternship_manage.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('vinternship_manage_form',2),
+        'access callback' => 'user_access',
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+    );
+
+    $items['vinternship/attendance'] = array(
+        'title'            => 'Frequenza Volontaria - Registro Presenze',
+        'file'             => 'form/vinternship/getif.vinternship_attendance.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('vinternship_attendance_form',2),
+        'access callback' => 'user_access_or',
+        'access arguments' => array($permessi),
+    );
+
+
+    /****************************/
+    /***        TIROCINI        */
+    /****************************/
+    $items['internship'] = array(
+        'title'            => 'Tirocini',
+        'description'      => t('Lista Tirocini1'),
+        'menu_name'        => 'menu-menu-left',
+        'weight'           => 1,
+        'file'             => 'form/internship/getif.internship_list_view.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('internship_list_view_form',1),
+        'access callback' => 'user_access_or',
+        'access arguments' => array($permessi),
+        'type'             => MENU_NORMAL_ITEM,
+        'mlid'             => 1,
+        'weight' => 11
+    );
+
+    $items['internship/new/1'] = array(
+        'title'            => 'Tirocinio - Pratica',
+        'description'      => t('Nuovo Tirocinio'),
+        'file'             => 'form/internship/getif.internship_1.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('internship_1_form',1,2),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'plid'             => 1
+
+    );
+    $items['internship/edit/1'] = array(
+        'title'            => 'Tirocinio - Pratica',
+        'description'      => t('Creo un nuovo tirocinio/Fase Ti1'),
+        'file'             => 'form/internship/getif.internship_1.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('internship_1_form',1,2),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+    );
+    $items['internship/view/1'] = array(
+        'title'            => 'Tirocinio - Pratica',
+        'description'      => t('Creo un nuovo tirocinio/Fase Ti1'),
+        'file'             => 'form/internship/getif.internship_1.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('internship_1_form',1,2),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+    );
+    $items['internship/new/2'] = array(
+        'title'            => 'Tirocinio - Pratica',
+        'description'      => t('Creo un nuovo tirocinio/Fase Ti2'),
+        'file'             => 'form/internship/getif.internship_2.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('internship_2_form',1,2),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+    );
+    $items['internship/edit/2'] = array(
+        'title'            => 'Tirocinio - Pratica',
+        'description'      => t('Creo un nuovo tirocinio/Fase Ti2'),
+        'file'             => 'form/internship/getif.internship_2.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('internship_2_form',1,2),
+        'access callback'  => TRUE,
+    );
+    $items['internship/view/2'] = array(
+        'title'            => 'Tirocinio - Pratica',
+        'description'      => t('Creo un nuovo tirocinio/Fase Ti2'),
+        'file'             => 'form/internship/getif.internship_2.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('internship_2_form',1,2),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+    );
+    $items['internship/new/3'] = array(
+        'title'            => 'Tirocinio - Pratica',
+        'description'      => t('Creo un nuovo tirocinio/Fase Ti3'),
+        'weight'           => 1,
+        'file'             => 'form/internship/getif.internship_3.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('internship_3_form',1,2),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+    );
+    $items['internship/view/3'] = array(
+        'title'            => 'Tirocinio - Pratica',
+        'description'      => t('Creo un nuovo tirocinio/Fase Ti3'),
+        'weight'           => 1,
+        'file'             => 'form/internship/getif.internship_3.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('internship_3_form',1,2),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+    );
+    $items['internship/edit/3'] = array(
+        'title'            => 'Tirocinio - Pratica',
+        'description'      => t('Creo un nuovo tirocinio/Fase Ti3'),
+        'weight'           => 1,
+        'file'             => 'form/internship/getif..inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('internship_3_form',1,2),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+    );
+    $items['internship/new/4'] = array(
+        'title'            => 'Tirocinio - Pratica',
+        'description'      => t('Creo un nuovo tirocinio/Fase Ti4'),
+        'weight'           => 1,
+        'file'             => 'form/internship/getif.internship_4.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('internship_4_form',1,2),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+    );
+    $items['internship/edit/4'] = array(
+        'title'            => 'Tirocinio - Pratica',
+        'description'      => t('Creo un nuovo tirocinio/Fase Ti4'),
+        'file'             => 'form/internship/getif.internship_4.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('internship_4_form',1,2),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+    );
+    $items['internship/view/4'] = array(
+        'title'            => 'Tirocinio - Pratica',
+        'description'      => t('Creo un nuovo tirocinio/Fase Ti4'),
+        'file'             => 'form/internship/getif.internship_4.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('internship_4_form',1,2),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+    );
+    $items['internship/manage/%'] = array(
+        'title'            => 'Tirocinio - Gestione',
+        'weight'           => 1,
+        'file'             => 'form/internship/getif.internship_manage.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('internship_manage_form',2),
+        'access callback' => 'user_access',
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+    );
+
+    $items['internship/attendance'] = array(
+        'title'            => 'Tirocinio - Registro Presenze',
+        'file'             => 'form/internship/getif.internship_attendance.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('internship_attendance_form',2),
+        'access callback' => 'user_access_or',
+        'access arguments' => array($permessi),
+    );
+
+    $items['internship/list'] = array(
+        'title'            => 'Tirocini',
+        'description'      => t('Lista Tirocini'),
+        'menu_name'        => 'menu-menu-left',
+        'weight'           => 1,
+        'file'             => 'form/internship/getif.internship_list_view.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('internship_list_view_form'),
+        'access callback' => 'user_access_or',
+        'access arguments' => array($permessi),
+        'plid'             => 1
+    );
+
+    /**************************************/
+    /***        Persone Giuridiche        */
+    /**************************************/
+
+    $items['lperson_promoter'] = array(
+        'title'            => 'Soggetti Promotore',
+        'description'      => t('Soggetti Promotore'),
+        'menu_name'        => 'menu-menu-left',
+        'weight'           => 1,
+        'file'             => 'form/lperson/getif.lperson_promoter_list_view.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('lperson_promoter_list_view_form',1),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'weight' => 40
+    );
+    $items['lperson_promoter/new'] = array(
+        'title'            => 'Soggetto Promotore',
+        'description'      => t('Nuovo Soggetto'),
+        'file'             => 'form/lperson/getif.lperson_promoter.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('lperson_promoter_form',1),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'type' => MENU_CALLBACK
+    );
+    $items['lperson_promoter/edit'] = array(
+        'title'            => 'Soggetto Promotore',
+        'description'      => t('Nuovo Soggetto'),
+        'file'             => 'form/lperson/getif.lperson_promoter.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('lperson_promoter_form',1),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'type' => MENU_CALLBACK
+    );
+    $items['lperson_host/edit/1'] = array(
+        'title'            => 'Soggetto Ospitante',
+        'description'      => t('Soggetto Ospitante'),
+        'menu_name'        => 'menu-menu-left',
+        'file'             => 'form/lperson/getif.lperson_host.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('lperson_host_form',1),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'weight' => 30
+    );
+    $items['lperson_promoter/view'] = array(
+        'title'            => 'Soggetto Promotore',
+        'description'      => t('Nuovo Soggetto'),
+        'file'             => 'form/lperson/getif.lperson_promoter.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('lperson_promoter_form',1),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'type' => MENU_CALLBACK
+    );
+    $items['lperson_promoter/list'] = array(
+        'title'            => 'Lista Soggetti Promotore',
+        'description'      => t('Lista Soggetti'),
+        'file'             => 'form/lperson/getif.lperson_promoter_list_view.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('lperson_promoter_list_view_form',1),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'type' => MENU_CALLBACK
+    );
+    $items['lperson_promoter/branches'] = array(
+        'title'            => 'Soggetto Promotore - Gestione Segr./Dip.',
+        'description'      => t('Soggetto - Gestione Segr./Dip.'),
+        'file'             => 'form/lperson/getif.lperson_promoter_branch_manage.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('lperson_promoter_branch_manage_form',1),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'type' => MENU_CALLBACK
+    );
+    $items['lperson_host/branches'] = array(
+        'title'            => 'Soggetto Ospitante - Gestione Strutture',
+        'description'      => t('Soggetto - Gestione Segr./Dip.'),
+        'file'             => 'form/lperson/getif.lperson_host_branch_manage.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('lperson_host_branch_manage_form',1),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'type' => MENU_CALLBACK
+    );
+    $items['lperson_host/branch/child/new'] = array(
+        'title'            => 'Soggetto Ospitante - Gestione Laboratori',
+        'description'      => t('Nuovo Laboratorio'),
+        'file'             => 'form/lperson/getif.lperson_host_child_branch.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('lperson_host_child_branch_form',3),
+        'access callback'  => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'type' => MENU_CALLBACK
+    );
+    $items['lperson_host/branch/child/edit'] = array(
+        'title'            => 'Soggetto Ospitante - Gestione Laboratori',
+        'description'      => t('Modifica Laboratorio'),
+        'file'             => 'form/lperson/getif.lperson_host_child_branch.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('lperson_host_child_branch_form',3),
+        'access callback'  => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'type' => MENU_CALLBACK
+    );
+
+    /**************************/
+    /***        BUDGET        */
+    /**************************/
+
+    $items['lperson_host/budget_manage'] = array(
+        'title' => 'Soggetto Ospitante - Gestione Budget',
+        'file' => 'form/lperson/getif.lperson_host_budget_manage.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('lperson_host_budget_manage_form',1),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'type' => MENU_CALLBACK
+    );
+
+    $items['lperson_host/budget'] = array(
+        'title' => 'Soggetto Ospitante - Budget',
+        'file' => 'form/lperson/getif.lperson_host_budget.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('lperson_host_budget_form',1),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'type' => MENU_CALLBACK
+    );
+
+    /*****************************/
+    /***        STRUTTURE        */
+    /*****************************/
+    $items['lperson_promoter/branch/new'] = array(
+        'title'            => 'Soggetto Promotore - Gestione Segr./Dip.',
+        'description'      => t('Nuovo Dipartimento'),
+        'file'             => 'form/lperson/getif.lperson_promoter_branch.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('lperson_promoter_branch_form',2),
+        'access callback'  => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'type' => MENU_CALLBACK
+    );
+
+    $items['lperson_promoter/branch/edit'] = array(
+        'title'            => 'Soggetto Promotore - Gestione Segr./Dip.',
+        'description'      => t('Modifica Dipartimento'),
+        'file'             => 'form/lperson/getif.lperson_promoter_branch.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('lperson_promoter_branch_form',2),
+        'access callback'  => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'type' => MENU_CALLBACK
+    );
+
+    $items['lperson_host/branch/new'] = array(
+        'title'            => 'Soggetto Ospitante - Gestione Strutture',
+        'description'      => t('Nuova Struttura'),
+        'file'             => 'form/lperson/getif.lperson_host_branch.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('lperson_host_branch_form',2),
+        'access callback'  => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'type' => MENU_CALLBACK
+    );
+    $items['lperson_host/branch/edit'] = array(
+        'title'            => 'Soggetto Ospitante - Gestione Struttura',
+        'description'      => t('Modifica Struttura'),
+        'file'             => 'form/lperson/getif.lperson_host_branch.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('lperson_host_branch_form',2),
+        'access callback'  => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'type' => MENU_CALLBACK
+    );
+
+    $items['lperson_host/branch/calendar'] = array(
+        'title'            => 'Soggetto Ospitante - Calendario occupazione struttura',
+        'description'      => t('Nuova Struttura'),
+        'file'             => 'form/lperson/getif.lperson_host_branch_calendar.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('lperson_host_branch_calendar_form',2),
+        'access callback'  => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'type' => MENU_CALLBACK
+    );
+
+    /***********************************/
+    /***        PERSONE FISICHE        */
+    /************************************/
+
+    $items['person'] = array(
+        'title'            => t('Figure'),
+        'description'      => t('Figure'),
+        'menu_name'        => 'menu-menu-left',
+        'file'             => 'form/person/getif.person_list_view.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('person_list_view_form'),
+        'access callback'  => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'weight'           => 130,
+        'mlid'             => 130,
+    );
+    $items['person/new'] = array(
+        'title'            => 'Anagrafica Figura',
+        'description'      => t('Nuova Figura'),
+        'weight'           => 1,
+        'file'             => 'form/person/getif.person.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('person_form',1),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'type' => MENU_CALLBACK
+    );
+    $items['person/edit'] = array(
+        'title'            => 'Anagrafica Figura',
+        'description'      => t('Nuova Figura'),
+        'weight'           => 1,
+        'file'             => 'form/person/getif.person.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('person_form',1),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'type' => MENU_CALLBACK
+    );
+    $items['person/view'] = array(
+        'title'            => 'Anagrafica Figura',
+        'description'      => t('Nuova Persona'),
+        'file'             => 'form/person/getif.person.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('person_form',1),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'type' => MENU_CALLBACK
+    );
+    $items['person/list'] = array(
+        'title'            => 'Figure',
+        'weight'           => 1,
+        'file'             => 'form/person/getif.person_list_view.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('person_list_view_form',1),
+        'access callback'  => TRUE,
+        'type' => MENU_CALLBACK
+    );
+
+    /*******************************/
+    /***        CONVENZIONI        */
+    /*******************************/
+
+    $items['agreement'] = array(
+        'title'            => 'Convenzioni',
+        'description'      => t('Convenzioni'),
+        'menu_name'        => 'menu-menu-left',
+        'weight'           => 1,
+        'file'             => 'form/agreement/getif.agreement_list_view.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('agreement_list_view_form'),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'mlid' => 150,
+        'weight' => 50
+    );
+    $items['agreement/new'] = array(
+        'title'            => 'Anagrafica Convenzione',
+        'description'      => t('Nuova Convenzione'),
+        'menu_name'        => 'menu-menu-left',
+        'weight'           => 1,
+        'file'             => 'form/agreement/getif.agreement.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('agreement_form',1),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'plid' =>	150,
+        'type' => MENU_CALLBACK
+
+    );
+    $items['agreement/edit'] = array(
+        'title'            => 'Anagrafica Convenzione',
+        'description'      => t('Modifica Convenzione'),
+        'weight'           => 1,
+        'file'             => 'form/agreement/getif.agreement.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('agreement_form',1),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'plid' =>	150,
+        'type' => MENU_CALLBACK
+    );
+    $items['agreement/view'] = array(
+        'title'            => 'Anagrafica Convenzione',
+        'description'      => t('Modifica Convenzione'),
+        'weight'           => 1,
+        'file'             => 'form/agreement/getif.agreement.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('agreement_form',1),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'plid' =>	150,
+        'type' => MENU_CALLBACK
+    );
+    $items['agreement/list'] = array(
+        'title'            => 'Anagrafica Convenzione',
+        'description'      => t('Lista Convenzioni'),
+        'menu_name'        => 'menu-menu-left',
+        'weight'           => 1,
+        'file'             => 'form/agreement/getif.agreement_list_view.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('agreement_list_view_form'),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'plid' =>	150,
+        'type' => MENU_CALLBACK
+
+    );
+
+    /*******************************/
+    /***        TIROCINANTI        */
+    /*******************************/
+
+    $items['intern'] = array(
+        'title'            => 'Tirocinanti',
+        'description'      => t('Lista Tirocinanti'),
+        'menu_name'        => 'menu-menu-left',
+        'file'             => 'form/intern/getif.intern_list_view.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('intern_list_view_form'),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'type'             => MENU_NORMAL_ITEM,
+        'mlid'             => 140,
+        'weight' => 12
+
+    );
+    $items['intern/new'] = array(
+        'title'            => 'Anagrafica Tirocinante',
+        'description'      => t('Nuovo Tirocinante'),
+        'file'             => 'form/intern/getif.intern.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('intern_form',1),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'plid' => 140,
+        'type' => MENU_CALLBACK
+    );
+    $items['intern/edit'] = array(
+        'title'            => 'Anagrafica Tirocinante',
+        'description'      => t('Nuovo Tirocinanti'),
+        'file'             => 'form/intern/getif.intern.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('intern_form',1),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'plid' => 140,
+        'type' => MENU_CALLBACK
+    );
+    $items['intern/view'] = array(
+        'title'            => 'Anagrafica Tirocinante',
+        'description'      => t('Nuovo Tirocinanti'),
+        'file'             => 'form/intern/getif.intern.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('intern_form',1),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'plid' => 140,
+        'type' => MENU_CALLBACK
+    );
+    $items['intern/list'] = array(
+        'title'            => 'Tirocinanti',
+        'description'      => t('Lista Tirocinanti'),
+        'file'             => 'form/intern/getif.intern_list_view.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('intern_list_view_form'),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'plid' => 140,
+        'type' => MENU_CALLBACK
+    );
+
+    /********************************/
+    /***        FREQUENTATORI       */
+    /********************************/
+
+    $items['vintern'] = array(
+        'title'            => 'Frequentatori volontari',
+        'description'      => t('Lista Frequentatori'),
+        'menu_name'        => 'menu-menu-left',
+        'file'             => 'form/vintern/getif.vintern_list_view.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('vintern_list_view_form'),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'type'             => MENU_NORMAL_ITEM,
+        'mlid'             => 140,
+        'weight' => 14
+
+    );
+    $items['vintern/new'] = array(
+        'title'            => 'Anagrafica Frequentatore',
+        'description'      => t('Nuovo Frequentatore'),
+        'file'             => 'form/vintern/getif.vintern.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('vintern_form',1),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'plid' => 140,
+        'type' => MENU_CALLBACK
+    );
+    $items['vintern/edit'] = array(
+        'title'            => 'Anagrafica Frequentatore',
+        'description'      => t('Nuovo Frequentatore'),
+        'file'             => 'form/vintern/getif.vintern.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('vintern_form',1),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'plid' => 140,
+        'type' => MENU_CALLBACK
+    );
+    $items['vintern/view'] = array(
+        'title'            => 'Anagrafica Frequentatore',
+        'description'      => t('Nuovo Frequentatore'),
+        'file'             => 'form/vintern/getif.vintern.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('vintern_form',1),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'plid' => 140,
+        'type' => MENU_CALLBACK
+    );
+    $items['vintern/list'] = array(
+        'title'            => 'Lista frequentatori volontari',
+        'description'      => t('Lista Frequentatori'),
+        'file'             => 'form/vintern/getif.vintern_list_view.inc',
+        'page callback'    => 'drupal_get_form',
+        'page arguments'   => array('vintern_list_view_form'),
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'plid' => 140,
+        'type' => MENU_CALLBACK
+    );
+
+
+    /* ----- */
+    /* ALTRO */
+    /* ----- */
+
+    $items['delete_record'] = array(
+        'title' => 'Elimina Record',
+        'file' => 'form/getif.delete_record.inc',
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('delete_record_form'),
+        'access callback' => 'user_access_or',
+        'access arguments' => array($permessi),
+        'type' => MENU_CALLBACK
+    );
+
+
+
+    $items['notifications'] = array(
+        'title' => 'Notifiche',
+        'file' => 'page/getif.notifications.inc',
+        'page callback' => 'getif_notifications',
+        'access callback' => 'user_access_or',
+        'access arguments' => array($permessi),
+        'type' => MENU_CALLBACK
+    );
+
+
+    /*****************************/
+    /***        CALLBACKS        */
+    /*****************************/
+
+    $items['download'] = array(
+        'page callback' => 'getif_download_file',
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'type' => MENU_CALLBACK,
+    );
+    $items['intern_autocomplete_callback'] = array(
+        'page callback' => 'intern_autocomplete_callback',
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'type' => MENU_CALLBACK,
+    );
+    $items['vintern_autocomplete_callback'] = array(
+        'page callback' => 'vintern_autocomplete_callback',
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'type' => MENU_CALLBACK,
+    );
+    $items['internship_intern_autocomplete_callback'] = array(
+        'page callback' => 'internship_intern_autocomplete_callback',
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'type' => MENU_CALLBACK,
+    );
+    $items['lperson_by_lprole_autocomplete_callback'] = array(
+        'page callback' => 'lperson_by_lprole_autocomplete_callback',
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'type' => MENU_CALLBACK,
+    );
+    $items['lperson_by_prole_autocomplete_callback'] = array(
+        'page callback' => 'lperson_by_prole_autocomplete_callback',
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'type' => MENU_CALLBACK,
+    );
+    $items['lperson_lprole_autocomplete_callback'] = array(
+        'page callback' => 'lperson_lprole_autocomplete_callback',
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'type' => MENU_CALLBACK,
+    );
+    $items['person_autocomplete_callback'] = array(
+        'page callback' => 'person_autocomplete_callback',
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'type' => MENU_CALLBACK,
+    );
+
+    $items['tutor_autocomplete_callback'] = array(
+        'page callback' => 'tutor_autocomplete_callback',
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'type' => MENU_CALLBACK,
+    );
+
+
+    $items['host_tutor_autocomplete_callback'] = array(
+        'page callback' => 'host_tutor_autocomplete_callback',
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'type' => MENU_CALLBACK,
+    );
+
+    $items['all_host_tutors_autocomplete_callback'] = array(
+        'page callback' => 'all_host_tutors_autocomplete_callback',
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'type' => MENU_CALLBACK,
+    );
+
+    $items['location_area_autocomplete_callback'] = array(
+        'page callback' => 'location_area_autocomplete_callback',
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'type' => MENU_CALLBACK,
+    );
+
+    $items['branch_autocomplete_callback'] = array(
+        'page callback' => 'branch_autocomplete_callback',
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'type' => MENU_CALLBACK,
+    );
+    $items['qualification_autocomplete_callback'] = array(
+        'page callback' => 'qualification_autocomplete_callback',
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'type' => MENU_CALLBACK,
+    );
+    $items['position_autocomplete_callback'] = array(
+        'page callback' => 'position_autocomplete_callback',
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'type' => MENU_CALLBACK,
+    );
+
+    $items['person_signatory_list_autocomplete_by_lperson_position_callback'] = array(
+        'page callback' => 'person_signatory_list_autocomplete_by_lperson_position_callback',
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'type' => MENU_CALLBACK,
+    );
+    $items['cities_autocomplete_callback'] = array(
+        'page callback' => 'cities_autocomplete_callback',
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'type' => MENU_CALLBACK,
+    );
+
+    $items['person_list_autocomplete_callback'] = array(
+        'page callback' => 'person_list_autocomplete_callback',
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'type' => MENU_CALLBACK,
+    );
+
+    $items['person_list_autocomplete_by_lperson_callback'] = array(
+        'page callback' => 'person_list_autocomplete_by_lperson_callback',
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'type' => MENU_CALLBACK,
+    );
+
+    $items['lperson_by_prole_and_level_autocomplete_callback'] = array(
+        'page callback' => 'lperson_by_prole_and_level_autocomplete_callback',
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'type' => MENU_CALLBACK
+    );
+
+    $items['lperson_by_position_and_level_autocomplete_callback'] = array(
+        'page callback' => 'lperson_by_position_and_level_autocomplete_callback',
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'type' => MENU_CALLBACK
+    );
+
+    $items['agreement_autocomplete_callback'] = array(
+        'page callback' => 'agreement_autocomplete_callback',
+        'access callback' => 'user_access_or',
+        'access arguments' => array(array('administrator_permissions','operator_permissions')),
+        'type' => MENU_CALLBACK,
+    );
+
+
+    return $items;
+}
+
+
+/**********************/
+/**********************/
+/**
+ * Access callback che permette l'accesso agli utenti che hanno almeno uno dei permessi passati
+ * uso:
+ * 'access callback' => 'user_access_or',
+ * 'access arguments' => array(array('inseritore IRENE', 'validatore IRENE')),
+ * @param $arr_perms
+ * @return bool
+ */
+function user_access_or($arr_perms) {
+    for($i=0; $i<sizeof($arr_perms); $i++) {
+        if(user_access($arr_perms[$i])){
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * @param $vars
+ */
+function getif_preprocess_page(&$vars) {
+    if (!empty($vars['page']['content']['system_main']["#form_id"]) && $vars['page']['content']['system_main']["#form_id"] == 'help_form') {
+        $vars['page']['navigation'] = '<div style="padding-top:10px"><span class="panel-title fieldset-legend">Help in linea Ge.Ti.F.</span></div>';
+    } else {
+        global $user;
+        /* CUSTOM MENU */
+        $main_menu_tree = menu_tree_all_data('menu-menu-left', null);
+        $output = render_menu_tree($main_menu_tree, null, menu_get_item()['path']);
+        if (!user_is_anonymous()) {
+            $vars['page']['sidebar_first'] = '
+        <fieldset class="panel panel-default form-wrapper g-bootstro"
+            data-bootstro-title="Menu principale" data-bootstro-content="Quest\'area presenta il menu principale con i link per accedere alle pagina di interesse." data-bootstro-width="400px" data-bootstro-placement="right">
+            <legend class="panel-heading">
+                <div style="float:left">
+                    <span class="panel-title fieldset-legend">Ge.Ti.F.</span>
+                </div>
+             </legend>
+             <div class="panel-body">
+                ' . $output . '
+             </div>
+         </fieldset>
+         <fieldset class="panel panel-default form-wrapper g-bootstro"
+            data-bootstro-title="Bisogno di aiuto?" data-bootstro-content="Quest\'area contiene le domande frequenti." data-bootstro-width="400px" data-bootstro-placement="right">
+            <legend class="panel-heading">
+                <div style="float:left">
+                    <span class="panel-title fieldset-legend">Bisogno di aiuto?</span>
+                </div>
+             </legend>
+             <div class="panel-body">
+            <ul class="list-group"><li class="list-group-item">'._overlay_make_link('Come creare un nuovo tirocinio?').'</li><li class="list-group-item">'._overlay_make_link('Come creare un nuova frequenza volontaria?').'</li>
+             </div>
+         </fieldset>';
+        }
+        db_set_active('getif_data');
+        $query = db_select("profilo_utente", "pu");
+        $query->innerJoin('person', 'p', 'p.id_person = pu.id_person');
+        $query->fields("p");
+        $query->condition('pu.uid', $user->uid, '=');
+        $profilo = (object)$query->execute()->fetchAssoc();
+        db_set_active();
+        $query = db_select("users_roles", "ur");
+        $query->innerJoin('role', 'r', 'r.rid = ur.rid');
+        $query->fields("r");
+        $query->condition('ur.uid', $user->uid, '=');
+        $result = $query->execute();
+        $ruolo = (object)$result->fetchAssoc();
+        if (!empty($profilo->lastname) || in_array('administrator', $user->roles) || in_array('amministratore', $user->roles)) {
+            $utente = (!empty($profilo->lastname)) ? $profilo->lastname . ' ' . $profilo->firstname . ' (' . $profilo->tax_code . ')' : $user->mail;
+            $descrizione = (!empty($ruolo->name)) ? ($ruolo->name == 'tutor' ? ucfirst('tutor/Referente') : ucfirst($ruolo->name)) : t('amministratore');
+            $vars['page']['navigation'] = '
+            <div class ="col-md-5" style = "padding: 10px">
+                <div style = "display: inline-block; font-size:28px; padding-right: 10px">
+                    <i class="glyphicon glyphicon-user" style="border-radius: 25px;background: #008f00; color: #fff; padding: 10px;"></i>
+                </div>
+                <div style = "display: inline-block">
+                    <ul class="info">
+                        <li>Utente: ' . $utente . '</li>
+                        <li>Ruolo: ' . $descrizione . '</li>
+                    </ul>
+                </div>
+            </div>
+        ';
+
+            /* Notifiche */
+            $notifications = array();
+            if (in_array('administrator', $user->roles) || in_array('amministratore', $user->roles) || in_array('operator', $user->roles) || in_array('operatore', $user->roles)) {
+                // Tirocini in scadenza
+                db_set_active('getif_data');
+                $query = db_select('cron', 't1');
+                $query->innerJoin('internship', 't2', 't1.id_table = t2.id_internship AND t2.flg_voluntary = 0');
+                $query->condition('t1.table_name', 'internship');
+                $query->fields('t1');
+                $query->condition('state', '1');
+                $result = $query->countQuery()->execute()->fetchField();
+                db_set_active();
+                if (intval($result) > 0) {
+                    $notifications[] = '<span>' . format_plural(intval($result), '1 Tirocinio', '@count Tirocini') . ' in scadenza</span>';
+                }
+                // Frequenze in scadenza
+                db_set_active('getif_data');
+                $query = db_select('cron', 't1');
+                $query->innerJoin('internship', 't2', 't1.id_table = t2.id_internship AND t2.flg_voluntary = 1');
+                $query->condition('t1.table_name', 'internship');
+                $query->fields('t1');
+                $query->condition('state', '1');
+                $result = $query->countQuery()->execute()->fetchField();
+                db_set_active();
+                if (intval($result) > 0) {
+                    $notifications[] = '<span>' . format_plural(intval($result), '1 Tirocinio', '@count Tirocini') . ' in scadenza</span>';
+                }
+                // Tirocini cocnlusi da confermare
+                db_set_active('getif_data');
+                $query = db_select('cron', 't1');
+                $query->innerJoin('internship', 't2', 't1.id_table = t2.id_internship AND t2.flg_voluntary = 0');
+                $query->fields('t1');
+                $query->condition('t1.table_name', 'internship');
+                $query->condition('state', '2');
+                $result = $query->countQuery()->execute()->fetchField();
+                db_set_active();
+                if (intval($result) > 0) {
+                    $notifications[] = '<span>' . format_plural(intval($result), '1 Tirocinio concluso', '@count Tirocini conclusi') . ' da confermare</span>';
+                }
+                // Frequenze concluse da confermare
+                db_set_active('getif_data');
+                $query = db_select('cron', 't1');
+                $query->innerJoin('internship', 't2', 't1.id_table = t2.id_internship AND t2.flg_voluntary = 1');
+                $query->fields('t1');
+                $query->condition('t1.table_name', 'internship');
+                $query->condition('state', '2');
+                $result = $query->countQuery()->execute()->fetchField();
+                db_set_active();
+                if (intval($result) > 0) {
+                    $notifications[] = '<span>' . format_plural(intval($result), '1 Frequenza conclusa', '@count Frequenze concluse') . ' da confermare</span>';
+                }
+                // Convenzioni in scadenza
+                db_set_active('getif_data');
+                $query = db_select('cron', 't1');
+                $query->fields('t1');
+                $query->condition('t1.table_name', 'agreement');
+                $query->condition('state', '1');
+                $result = $query->countQuery()->execute()->fetchField();
+                db_set_active();
+                if (intval($result) > 0) {
+                    $notifications[] = '<span>' . format_plural(intval($result), '1 Convenzione', '@count Convenzioni') . ' in scadenza</span>';
+                }
+            }
+            db_set_active('getif_data');
+            $query = db_select('cron', 't1');
+            $query->condition('t1.table_name', 'internship_attendance_sheet');
+            $query->fields('t1');
+            $query->condition('state', '1');
+            $result = $query->countQuery()->execute()->fetchField();
+            db_set_active();
+            if (intval($result) > 0) {
+                $notifications[] = '<span>' . format_plural(intval($result), '1 Registro', '@count Registri') . ' presenza da chiudere</span>';
+            }
+            $n_notification = count($notifications);
+            $vars['page']['navigation'] .= '
+                <div class ="menu nav navbar-nav secondary" style="padding-top:10px">
+                    <div style="display:inline-block;padding:5px;text-align:center">
+                        <div class="dropdown messages-menu">
+                            <a href="#" class="info-btn">
+                                <span class="glyphicon glyphicon-info-sign" style="font-size:20px;"></span>
+                            </a>
+                        </div>
+                    </div>
+                    <!--<div style="display: inline-block" class="glyphicon glyphicon-pushpin"></div>-->
+                    <div style="display:inline-block;padding:5px;text-align:center">';
+            $vars['page']['navigation'] .= '
+                        <div class="dropdown messages-menu">
+                            <a href="#" class="dropdown-toggle" data-toggle="dropdown" id="notify-comet">
+                                <span class="glyphicon glyphicon-bell" style="font-size:20px;">
+                                    <span class="rw-number-notification">' . $n_notification . '</span>
+                                </span>
+                            </a>
+                            ';
+
+            $vars['page']['navigation'] .=
+                '<ul class="dropdown-menu pull-right container-msgs">';
+            $vars['page']['navigation'] .=
+                '<li class="header-msgs">' . format_plural($n_notification, '1 notifica', '@count notifiche') . '</li>';
+            foreach ($notifications AS $notification) {
+                $vars['page']['navigation'] .= '<li class="item-msgs"><a href="' . base_path() . 'notifications">' . $notification . '</a></li>';
+            }
+            $vars['page']['navigation'] .=
+                '<li class="footer-msgs"><a href="' . base_path() . 'notifications">Leggi tutti i messaggi</a></li>';
+            $vars['page']['navigation'] .=
+                '</ul>';
+            $vars['page']['navigation'] .=
+                '</div>';
+            $vars['page']['navigation'] .= '
+                    </div>
+                </div>
+                ';
+
+        }
+        
+        $full_path = drupal_get_path('module', 'getif') . '/js/getif.js';
+        drupal_add_js($full_path);
+        // Add css stylesheets
+        $full_path = drupal_get_path('module', 'getif') . '/css/getif.css';
+        drupal_add_css($full_path);
+        $vars['scripts'] = drupal_get_js();
+    }
+}
+
+/**
+ * @param $edit
+ * @param $account
+ */
+function getif_user_login(&$edit, $account) {
+    global $user;
+    if ($user->uid) {
+        $profilo = getRecordByField('profilo_utente', 'getif_data', 'uid', $user->uid, 1);
+        $_SESSION['user']['id_person'] = (!empty($profilo->id_person))?$profilo->id_person:'';
+    }
+}
+
+/**
+ *
+ */
+function getif_download_file() {
+    if (!isset($_GET['fid'])) {
+        return drupal_not_found();
+    }
+    $fid = $_GET['fid'];
+    $query = db_select('file_managed','t1');
+    $query->fields('t1',array('fid','filename','uri'));
+    //$query->condition('t1.status',FILE_STATUS_PERMANENT,'<>');
+    $query->condition('t1.fid',$fid,'=');
+    $file = $query->execute()->fetchAssoc();
+    if(!empty($file)) {
+        file_transfer($file['uri'], array('Content-disposition' => 'attachment; filename='.$file['filename']));
+    }
+    else {
+        return drupal_access_denied();
+    }
+}
+
+
+/**
+ * @param $fid
+ */
+function getif_download_file_func($fid) {
+
+    $query = db_select('file_managed','t1');
+    $query->fields('t1',array('fid','filename','uri'));
+    //$query->condition('t1.status',FILE_STATUS_PERMANENT,'<>');
+    $query->condition('t1.fid',$fid,'=');
+    $file = $query->execute()->fetchAssoc();
+    if(!empty($file)) {
+        file_transfer($file['uri'], array('Content-disposition' => 'attachment; filename='.$file['filename']));
+    }
+    else {
+        return drupal_access_denied();
+    }
+}
+
+
+/**
+ * @param $table_name
+ * @param $id_table
+ */
+function clean_cron_by_id($table_name, $id_table) {
+    // Cancella tutte le notifiche che hanno table_name e id_table uguali agli argomenti ignorando expired_time
+    db_set_active('getif_data');
+    $query = db_delete('cron');
+    $query->where('table_name LIKE \''.$table_name.'\' AND id_table = \''.$id_table.'\'');
+    $query->execute();
+    db_set_active();
+}
+
+
+/**
+ * @throws InvalidMergeQueryException
+ */
+function getif_cron(){
+    // Cancella tutte le notifiche scadute
+    db_set_active('getif_data');
+    $query = db_delete('cron');
+    $query->where('DATE(date_expired) < DATE(NOW())');
+    $query->execute();
+    db_set_active();
+    // Cancella tutte le notifiche che si riferiscono ad entità cancellate
+    db_set_active('getif_data');
+    $query = db_select('cron','t1');
+    $query->fields('t1',array('id_cron_table','table_name','id_table'));
+    $cron_list = $query->execute()->fetchAll();
+    db_set_active();
+    foreach ($cron_list AS $cron_item) {
+        db_set_active('getif_data');
+        $query = db_select($cron_item->table_name,'t1');
+        $query->fields('t1',array('id_'.$cron_item->table_name));
+        $query->condition('t1.id_'.explode('_',$cron_item->table_name)[0],$cron_item->id_table);
+        $query->condition('t1.active',0);
+        $cron_to_remove_list = $query->countQuery()->execute()->fetchField();
+        db_set_active();
+        if ($cron_to_remove_list > 0) {
+            db_set_active('getif_data');
+            $query = db_delete('cron');
+            $query->condition('id_cron_table',$cron_item->id_cron_table);
+            $query->execute();
+            db_set_active();
+        }
+
+    }
+    // Cron per settare la conclusione del tirocinio
+    db_set_active('getif_data');
+    $query = db_select('internship_state','t1');
+    $query->innerJoin('internship','t2','t1.id_internship = t2.id_internship');
+    $query->condition('t1.state',array(5,6),'BETWEEN');
+    $query->condition('t1.active',1);
+    $query->condition('t2.active',1);
+    $query->addField('t1', 'id_internship_state');
+    $query->addField('t1', 'id_internship');
+    $query->addField('t1', 'date_start', 'date_start_effective');
+    $query->addField('t1', 'date_end', 'date_end_effective');
+    $query->addField('t1', 'date_extension', 'date_extension');
+    $query->addField('t2', 'date_start');
+    $query->addField('t2', 'date_end');
+    $internships = $query->execute()->fetchAll();
+    db_set_active();
+
+    foreach($internships AS $internship) {
+        if(!empty($internship->date_extension)) {
+            $date_end_effective = date('Y-m-d', strtotime($internship->date_extension));
+        } else {
+            $date_start_effective = $internship->date_start_effective;
+            $datetime1 = new DateTime($internship->date_start);
+            $datetime2 = new DateTime($internship->date_end);
+            $interval = $datetime1->diff($datetime2);
+            $date_end_effective =$internship->date_end;
+        }
+
+
+        if (getDaysDiff(date('Y-m-d'),$date_end_effective) < 0) {
+            db_set_active('getif_data');
+            $query = db_update('internship_state');
+            $query->fields(array(
+                    'date_end' => $date_end_effective,
+                    'date_upd' => date("Y-m-d H:i:s", time())
+                )
+            );
+            $query->where('id_internship_state = '.$internship->id_internship_state);
+            $query->execute();
+            db_set_active();
+            db_set_active('getif_data');
+            $query = db_merge('cron');
+            $query->key(array(
+                    'table_name' => 'internship',
+                    'id_table' => $internship->id_internship,
+                )
+            );
+            $query->fields(array(
+                    'table_name' => 'internship',
+                    'id_table' => $internship->id_internship,
+                    'state' => 2,
+                    'date_expired' => null,
+                    'date_upd' => date("Y-m-d H:i:s", time())
+                )
+            );
+            $query->execute();
+            db_set_active();
+
+        } elseif ((getDaysDiff(date('Y-m-d'),$date_end_effective) < 7)) {
+            db_set_active('getif_data');
+            $query = db_merge('cron');
+            $query->key(array(
+                    'table_name' => 'internship',
+                    'id_table' => $internship->id_internship,
+                )
+            );
+            $query->fields(array(
+                    'table_name' => 'internship',
+                    'id_table' => $internship->id_internship,
+                    'state' => 1,
+                    'date_expired' => $date_end_effective,
+                    'date_upd' => date("Y-m-d H:i:s", time())
+                )
+            );
+            $query->execute();
+            db_set_active();
+        }
+    }
+
+    // Cron per le Convenzioni in scadenza
+    db_set_active('getif_data');
+    $query = db_select('agreement','t1');
+    $query->condition('t1.active',1);
+    $query->fields('t1');
+    $agreements = $query->execute()->fetchAll();
+    db_set_active();
+    foreach($agreements AS $agreement) {
+        // Se la convenzione non è scaduta ed è a meno di n giorni dalla scadenza
+        if (getDaysDiff(date("Y-m-d"),$agreement->date_end) < 7 && getDaysDiff(date("Y-m-d"),$agreement->date_end) >= 0) {
+            db_set_active('getif_data');
+            $query = db_merge('cron');
+            $query->key(array(
+                    'table_name' => 'agreement',
+                    'id_table' => $agreement->id_agreement
+                )
+            );
+            $query->fields(array(
+                    'table_name' => 'agreement',
+                    'id_table' => $agreement->id_agreement,
+                    'state' => 1,
+                    //'date_expired' => date('Y-m-d',strtotime($agreement->date_end. ' + 1 days')),
+                    'date_expired' => $agreement->date_end,
+                    'date_upd' => date("Y-m-d H:i:s", time())
+                )
+            );
+            $query->execute();
+            db_set_active();
+        }
+    }
+
+    // Cron per i Registri Presenze non chiusi
+    db_set_active('getif_data');
+    $query = db_select('internship_attendance_sheet','t1');
+    $query->innerJoin('internship_state','t2','t1.id_internship = t2.id_internship');
+    $query->innerJoin('internship','t3','t1.id_internship = t3.id_internship');
+    $query->where('(t1.is_closed IS NULL OR t1.is_closed = 0) AND (t2.state = 7 OR t2.state = 0)');
+    $query->condition('t1.active',1);
+    $query->condition('t2.active',1);
+    $query->condition('t3.active',1);
+    $query->fields('t1',array('id_internship_attendance_sheet','id_internship'));
+    $internships = $query->execute()->fetchAll();
+    db_set_active();
+    foreach($internships AS $internship) {
+        db_set_active('getif_data');
+        $query = db_merge('cron');
+        $query->key(array(
+                'table_name' => 'internship_attendance_sheet',
+                'id_table' => $internship->id_internship
+            )
+        );
+        $query->fields(array(
+                'table_name' => 'internship_attendance_sheet',
+                'id_table' => $internship->id_internship,
+                'state' => 1,
+                'date_expired' => null,
+                'date_upd' => date("Y-m-d H:i:s", time())
+            )
+        );
+        $query->execute();
+        db_set_active();
+    }
+    //watchdog('cron', 'Date: '.$date_end_effective);
+}
+
+
+/**
+ * @param $js_rules
+ * @param $element
+ * @param $context
+ * @throws Exception
+ */
+/*function getif_clientside_validation_rule_alter (&$js_rules, $element, $context) {
+    switch ($context['type']) {
+
+        case 'fapi':
+            if ($context['rule']['callback'] == 'fapi_validation_rule_chars') {
+                _clientside_validation_set_specific_values($element['#name'], $element['#title'], $context['params'], $js_rules);
+            }
+            break;
+
+        case 'field_validation':
+            if ($context['rule']['validator'] == 'regex') {
+                _clientside_validation_set_regex($element['#name'], $element['#title'], $js_rules, $context['rule']['data'], $context['message']);
+            }
+            if ($context['rule']['validator'] == 'must_be_empty') {
+                drupal_add_js(drupal_get_path('module', 'getif') . '/must_be_empty_validator.js');
+                $title = variable_get('clientside_validation_prefix', '') . $element['#title'] . variable_get('clientside_validation_suffix', '');
+                $js_rules[$element['element_name']]['mustBeEmpty'] = TRUE;
+                $js_rules[$element['element_name']]['messages']['mustBeEmpty'] = theme('clientside_error', array('message' => 'Field !name must be empty.', 'placeholders' => array('!name' => $title)));
+            }
+            break;
+
+        case 'element_validate':
+            if (in_array('getif_validation_set_required', $context['functions'])) {
+                _clientside_validation_set_required(
+                    $element['#name'],
+                    $element['#title'],
+                    true,
+                    $js_rules,
+                    t('test')
+                );
+            }
+            if (in_array('getif_validation_set_minmax_date', $context['functions'])) {
+                _clientside_validation_set_minmax_date(
+                    $element['#name'],
+                    $element['#title'],
+                    '01-01-2018',
+                    '01-01-2018',
+                    $js_rules,
+                    t('test')
+                );
+            }
+
+            /*if (in_array('getif_validate_integer', $context['functions'])) {
+                _clientside_validation_set_minmax2(
+                    $element['#name'],
+                    $element['#title'],
+                    0,
+                    99999,
+                    $js_rules,
+                    t('"!name" must be a positive number.', array('!name' => t($element['#title'])))
+                );
+            }
+            if (in_array('_field_validate', $context['functions'])) {
+
+                _clientside_validation_set_minmaxlength(
+                    $element['#name'],
+                    $element['#title'],
+                    2,
+                    3,
+                    $js_rules,
+                    t("Test")
+                );
+            }
+
+            if (in_array('_container_validate', $context['functions'])) {
+                _clientside_validation_set_not_equal(
+                    $element['textfield_one']['#name'],
+                    $element['textfield_one']['#title'],
+                    array(
+                        array(
+                            'form_key' => $element['textfield_two']['#name'],
+                            'name' => $element['textfield_two']['#title'],
+                        ),
+                    ),
+                    $js_rules,
+                    t("The two fields cannot have the same value")
+                );
+            }*/
+/*
+            break;
+
+        default:
+            break;
+    }
+}
+*/

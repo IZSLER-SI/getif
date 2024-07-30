@@ -1,0 +1,221 @@
+<?php
+/**
+ * @file
+ * Main module file.
+ */
+
+include_once 'cmnc_subscribe.features.inc';
+
+//region Hook Implementations
+/**
+ * Implements hook_message_subscribe_get_subscribers().
+ */
+function cmnc_subscribe_message_subscribe_get_subscribers(Message $message, $subscribe_options = array(), $context = array()) {
+  $options = array(
+    'notifiers' => array(
+      'cmnc' => 'cmnc',
+    ),
+    'flags' => array(
+      $message->type,
+    ),
+  );
+  $uids = array();
+  $wrapper = entity_metadata_wrapper('message', $message);
+
+  switch ($message->type) {
+    case 'cmnc_user_requests_group_membership':
+    case 'cmnc_user_followed':
+    case 'cmnc_group_membership_request_denied':
+    case 'cmnc_group_membership_request_approved':
+    case 'cmnc_group_membership_deleted':
+    case 'cmnc_member_invited_to_private_group':
+      _cmnc_subscribe_add_target_users($wrapper, $options, $uids);
+      break;
+  }
+
+  return $uids;
+}
+
+/**
+ * Implements hook_message_subscribe_get_subscribers_alter().
+ *
+ * Make sure notifications are not sent to users that should not receive them.
+ */
+function cmnc_subscribe_message_subscribe_get_subscribers_alter(&$uids, $values) {
+  $message = $values['message'];
+
+  switch ($message->type) {
+    case 'cmnc_member_invited_to_private_group':
+    case 'cmnc_user_followed':
+    case 'cmnc_group_membership_deleted':
+    case 'cmnc_group_membership_request_approved':
+    case 'cmnc_group_membership_request_denied':
+    case 'cmnc_user_requests_group_membership':
+      _cmnc_subscribe_remove_non_targetted_users($message, $uids);
+      break;
+  }
+}
+
+/**
+ * Implements hook_entity_presave().
+ *
+ * For group membership requests, make sure all group admins are on the
+ * notification list.
+ */
+function cmnc_subscribe_entity_presave($entity, $type) {
+  if ($type != 'message' || !$entity->is_new) {
+    return;
+  }
+
+  switch ($entity->type) {
+    case 'cmnc_user_requests_group_membership':
+      _cmnc_subscribe_add_group_administrators($entity);
+  }
+}
+
+/**
+ * Implements hook_entity_insert().
+ *
+ * Detects if a new message is being created and determines if we need to
+ * add a notification center notice for it.
+ *
+ * TODO: Make this more generic/configurable.
+ */
+function cmnc_subscribe_entity_insert($entity, $type) {
+  if ($type == 'message') {
+    $notify_options = array('cmnc' => array());
+    $subscribe_options = array();
+
+    switch ($entity->type) {
+      case 'cmnc_user_requests_group_membership':
+      case 'cmnc_group_membership_deleted':
+      case 'cmnc_member_invited_to_private_group':
+      case 'cmnc_user_followed':
+      case 'cmnc_group_membership_request_denied':
+      case 'cmnc_group_membership_request_approved':
+        $account = user_load($entity->uid);
+        message_subscribe_send_message('user', $account, $entity, $notify_options, $subscribe_options);
+        break;
+    }
+  }
+}
+
+/**
+ * Implements hook_flag().
+ *
+ * Trigger CMNC notifications for additional flag actions.
+ */
+function cmnc_subscribe_flag($action, $flag, $content_id, $account) {
+  if ($action == 'flag') {
+    switch ($flag->name) {
+      case 'commons_follow_user':
+        $followed_user = user_load($content_id);
+        // Don't generate a message for flagging blocked users.
+        if (!$followed_user->status) {
+          break;
+        }
+        $message = message_create('cmnc_user_followed', array(), $account);
+        $wrapper = entity_metadata_wrapper('message', $message);
+        $wrapper->field_target_users[] = $followed_user->uid;
+        $wrapper->save();
+        break;
+    }
+  }
+}
+//endregion
+
+/**
+ * Adds users in the target_users field to the notifications array.
+ *
+ * @param EntityMetadataWrapper $wrapper
+ *   The entity metadata wrapper for the message object.
+ *
+ * @param array $options
+ *   The array of options for the subscription.
+ *
+ * @param array $uids
+ *   The array of user ids to be notified of the message.
+ */
+function _cmnc_subscribe_add_target_users($wrapper, $options, &$uids) {
+  foreach ($wrapper->field_target_users->value() as $account) {
+    if (empty($uids[$account->uid])) {
+      $uids[$account->uid] = $options;
+    }
+  }
+}
+
+/**
+ * Removes excess uids from the notification list for certain message types.
+ *
+ * This is a workaround for the message_subscribe module's default
+ * implementation that adds every user that is following the originating
+ * user as a recipient.
+ *
+ * @param Message $message
+ *   The message object that notifications are being generated for.
+ *
+ * @param array $uids
+ *   An array of UIDs that are currently queued for notification.
+ */
+function _cmnc_subscribe_remove_non_targetted_users($message, &$uids) {
+  $target_uids = array();
+  $target_uids[$message->uid] = $message->uid;
+
+  $wrapper = entity_metadata_wrapper('message', $message);
+  if (isset($wrapper->field_target_users)) {
+    foreach ($wrapper->field_target_users->value() as $account) {
+      $target_uids[$account->uid] = $account->uid;
+    }
+  }
+
+  foreach (array_keys($uids) as $uid) {
+    if (!array_key_exists($uid, $target_uids)) {
+      unset($uids[$uid]);
+    }
+  }
+}
+
+/**
+ * Ensures that the field_target_users field has uids for all group admins.
+ *
+ * @param object $message
+ *   The message entity object which was just saved.
+ */
+function _cmnc_subscribe_add_group_administrators($message) {
+  $wrapper = entity_metadata_wrapper('message', $message);
+  if (!isset($wrapper->field_target_users) || !isset($wrapper->field_target_nodes)) {
+    return;
+  }
+
+  $uids = array();
+
+  foreach ($wrapper->field_target_nodes->value() as $group) {
+    // Add the group owner as a recipient.
+    if (empty($uids[$group->uid])) {
+      $uids[$group->uid] = $group->uid;
+    }
+
+    // Are there other group administrators that can approve the request?
+    $query = db_select('og_users_roles', 'ogur')
+      ->fields('ogur', array('uid'))
+      ->condition('ogur.gid', $group->nid, '=');
+
+    $query->join('og_role_permission', 'ogrp', 'ogur.rid=ogrp.rid');
+    $query->condition('ogrp.permission', 'approve and deny subscription', '=');
+    $result = $query->execute();
+
+    if (!empty($result)) {
+      foreach ($result as $row) {
+        if (!isset($uids[$row->uid])) {
+          $uids[$row->uid] = $row->uid;
+        }
+      }
+    }
+  }
+
+  if (!empty($uids)) {
+    foreach ($uids as $uid) {
+      $wrapper->field_target_users[] = $uid;
+    }
+  }
+}

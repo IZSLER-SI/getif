@@ -1,0 +1,24 @@
+<?php
+/**
+ * @file
+ * Installation hooks for the module.
+ */
+
+/**
+ * Implements hook_install().
+ */
+function cmnc_subscribe_install() {
+  // Force this feature to reset itself.
+  // Necessary because some field settings are not initialized correctly
+  // when the module first installs.
+  $revert = array(
+    'cmnc_subscribe' => array(
+      'message_type',
+      'field_instance',
+      'rules_config',
+      'variable',
+    ),
+  );
+  features_revert($revert);
+  cache_clear_all();
+}

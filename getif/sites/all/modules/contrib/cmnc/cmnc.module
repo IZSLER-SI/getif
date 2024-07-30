@@ -1,0 +1,280 @@
+<?php
+/**
+ * @file
+ * Main module file.
+ */
+
+include_once 'cmnc.features.inc';
+include_once 'includes/blocks/blocks.inc';
+
+// Permission Constants.
+define('CMNC_PERM_ADMIN', 'administer cmnc');
+define('CMNC_PERM_USE', 'use cmnc');
+
+/**
+ * Implements hook_init().
+ *
+ * Adds common js and css used by this module.
+ */
+function cmnc_init() {
+  $module_path = drupal_get_path('module', 'cmnc');
+  $js_options = array('group' => JS_DEFAULT, 'every_page' => TRUE);
+  drupal_add_js($module_path . '/js/cmnc.js', $js_options);
+}
+
+/**
+ * Implements hook_menu().
+ */
+function cmnc_menu() {
+  $items = array();
+
+  $items['cmnc/ajax/flag_read'] = array(
+    'title' => 'AJAX Callback for flagging messages as read',
+    'page callback' => 'cmnc_ajax_callback',
+    'delivery callback' => 'ajax_deliver',
+    'access callback' => TRUE,
+    'theme callback' => 'ajax_base_page_theme',
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['admin/config/system/cmnc'] = array(
+    'title' => 'Commons Message Notification Center',
+    'description' => 'Configure extended options for the Commons notification center',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('cmnc_settings_form'),
+    'type' => MENU_NORMAL_ITEM,
+    'access arguments' => array(CMNC_PERM_ADMIN),
+    'file' => 'includes/cmnc.admin.inc',
+  );
+  $items['admin/config/system/cmnc/settings'] = array(
+    'title' => 'Settings',
+    'description' => 'Configure extended options for the Commons notification center',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+  );
+  return $items;
+}
+
+/**
+ * Implements hook_menu_alter().
+ *
+ * Adds a new menu access callback for the my-notifications tab.
+ */
+function cmnc_menu_alter(&$items) {
+  if (isset($items['user/%views_arg/my-notifications'])) {
+    $items['user/%views_arg/my-notifications']['access callback'] = 'cmnc_my_notifications_access_callback';
+  }
+}
+
+/**
+ * Implements hook_module_implements_alter().
+ */
+function cmnc_module_implements_alter(&$implementations, $hook) {
+  // When the implementations of hook_menu_alter are called, we need our module
+  // to be called after views, so let's remove it from the implementations then
+  // add it to the end.
+  if ($hook == 'menu_alter') {
+    if (isset($implementations['cmnc'])) {
+      unset($implementations['cmnc']);
+      $implementations['cmnc'] = FALSE;
+    }
+  }
+}
+
+/**
+ * Implements hook_permission().
+ */
+function cmnc_permission() {
+  $items = array();
+
+  $items[CMNC_PERM_ADMIN] = array(
+    'title' => t('Administer Commons Message Notification Center'),
+    'description' => t('Administer Commons Message Notification Center'),
+  );
+  $items[CMNC_PERM_USE] = array(
+    'title' => t('Use Commons Message Notification Center'),
+    'description' => t('Allows user to view the notifications center.'),
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_entity_delete().
+ *
+ * Removes messages from CMNC when the related message entity is deleted.
+ */
+function cmnc_entity_delete($entity, $type) {
+  if ($type == 'message') {
+    db_delete('cmnc')
+      ->condition('mid', $entity->mid)
+      ->execute();
+  }
+}
+
+/**
+ * Implements hook_cron().
+ *
+ * Deletes expired viewed notifications.
+ */
+function cmnc_cron() {
+  $delete_expired_messages = variable_get('cmnc_delete_expired', TRUE);
+
+  if ($delete_expired_messages) {
+    // Default max age is 7 days (604,800 seconds).
+    $max_age = variable_get('cmnc_max_message_age', 604800);
+    $cutoff = time() - $max_age;
+    db_delete('cmnc')
+      ->condition('viewed', 1, '=')
+      ->condition('timestamp', $cutoff, '<=');
+  }
+}
+
+/**
+ * Implements hook_theme().
+ */
+function cmnc_theme($existing, $type, $theme, $path) {
+  $items = array();
+
+  $items['cmnc_notification_icon'] = array(
+    'variables' => array(
+      'unread_message_count' => 0,
+      'notification_content' => 'content here',
+      'message_count_class' => NULL,
+    ),
+    'template' => 'cmnc-notification-icon',
+    'render element' => 'content',
+    'path' => $path . '/themes',
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_commons_utility_links().
+ *
+ * Add cmnc notifications to utility links.
+ */
+function cmnc_commons_utility_links_alter(&$links) {
+  if (user_is_anonymous() || !user_access(CMNC_PERM_USE)) {
+    return;
+  }
+
+  if (!variable_get('cmnc_show_icon_in_utility_links', TRUE)) {
+    return;
+  }
+
+  $block = module_invoke('cmnc', 'block_view', CMNC_BLOCK_CMNC);
+  $links['cmnc'] = array(
+    'title' => render($block),
+    'html' => TRUE,
+  );
+}
+
+/**
+ * Implements hook_ctools_plugin_directory().
+ */
+function cmnc_ctools_plugin_directory($module, $plugin) {
+  if ($module == 'message_notify') {
+    return 'plugins/' . $plugin;
+  }
+}
+
+/**
+ * AJAX callback for when users click the notification icon.
+ *
+ * @return array
+ *   TBD.
+ */
+function cmnc_ajax_callback() {
+  $message_ids = NULL;
+  if (isset($_GET['messages'])) {
+    $matches = array();
+    if (preg_match('/^\d+(,\d+)*$/', $_GET['messages'], $matches)) {
+      $message_ids = explode(',', $matches[0]);
+    }
+  }
+  cmnc_mark_messages_read($message_ids);
+  return array('success' => TRUE);
+}
+
+/**
+ * Flags all unread messages as read for a user.
+ *
+ * @param array $message_ids
+ *   An array of message ids to be flagged as read.
+ *
+ * @param object $account
+ *   The user account to flag messages for.
+ *   Uses the current logged in user if not specified.
+ *
+ * @throws InvalidArgumentException
+ *   Occurs if the $message_ids parameter is empty or not an array.
+ */
+function cmnc_mark_messages_read($message_ids, $account = NULL) {
+  if (empty($message_ids) || !is_array($message_ids)) {
+    throw new InvalidArgumentException('Parameter message_ids must be a valid string of IDs.');
+  }
+
+  if (!is_object($account)) {
+    global $user;
+    $account = $user;
+  }
+
+  $query = db_update('cmnc')
+    ->fields(array(
+      'viewed' => 1,
+    ))
+    ->condition('receiver', $account->uid, '=')
+    ->condition('viewed', 0, '=')
+    ->condition('id', $message_ids, 'IN');
+
+  $query->execute();
+}
+
+/**
+ * Retrieves a list of all message center notification flags.
+ */
+function cmnc_flag_get_flags() {
+  $cmnc_flags = &drupal_static(__FUNCTION__);
+
+  if (!isset($cmnc_flags)) {
+    $flags = flag_get_flags();
+    $cmnc_flags = array();
+    foreach ($flags as $flag_name => $flag) {
+      // Check that the flag is using name convention.
+      if (strpos($flag_name, 'cmnc') === 0) {
+        $cmnc_flags[$flag_name] = $flag;
+      }
+    }
+  }
+
+  return $cmnc_flags;
+}
+
+/**
+ * Access callback function for the My Notifications page.
+ */
+function cmnc_my_notifications_access_callback($options = array()) {
+  // Grab the default access callback function name, prepare the access
+  // arguments, then see what the default access call back result is
+  // according to views.
+  $access_callback = $options[0];
+  $access_arguments = $options[1];
+  $access = call_user_func_array($access_callback, $access_arguments);
+
+  // If the default access call back was false, then the user is not allowed
+  // access.
+  if (!$access) {
+    return FALSE;
+  }
+
+  // Make sure the current user is the same one as the notifications
+  // page being viewed.
+  global $user;
+  $page_user = arg(1);
+  if ($page_user != $user->uid) {
+    return FALSE;
+  }
+
+  return TRUE;
+}

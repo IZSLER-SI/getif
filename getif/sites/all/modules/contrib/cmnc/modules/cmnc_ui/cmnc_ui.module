@@ -1,0 +1,517 @@
+<?php
+/**
+ * @file
+ * Main module file.
+ */
+
+require_once 'cmnc_ui.flag_default.inc';
+
+//region Hook Implmentations
+/**
+ * Implements hook_menu().
+ */
+function cmnc_ui_menu() {
+  $items = array();
+
+  $items['admin/config/system/cmnc/ui'] = array(
+    'title' => 'Per-User UI Settings',
+    'description' => 'Configuration options for the per-user settings.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('cmnc_ui_settings_form'),
+    'access arguments' => array(CMNC_PERM_ADMIN),
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 5,
+    'file' => 'includes/cmnc_ui.admin.inc',
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_menu_alter().
+ *
+ * Changes the form callback for the notification settings tab to our
+ * custom implementation.
+ */
+function cmnc_ui_menu_alter(&$items) {
+  if (isset($items['user/%user/notification-settings'])) {
+    $args = $items['user/%user/notification-settings']['page arguments'];
+    $index = array_search('commons_follow_ui_notification_settings_form', $args);
+    if ($index !== FALSE) {
+      $items['user/%user/notification-settings']['page arguments'][$index] = 'cmnc_ui_notification_settings_form';
+      $items['user/%user/notification-settings']['module'] = 'cmnc_ui';
+      $items['user/%user/notification-settings']['file'] = 'includes/cmnc_ui.pages.notification_settings.inc';
+    }
+  }
+}
+
+/**
+ * Implements hook_views_api().
+ */
+function cmnc_ui_views_api($module, $api) {
+  if ($module == 'views' && $api == 'views_default') {
+    return array('version' => 2);
+  }
+}
+
+/**
+ * Implements hook_preprocess_hook().
+ *
+ * Adds module javascript to the Notification Settings page display.
+ */
+function cmnc_ui_preprocess_views_view(&$vars) {
+  if (!isset($vars['view'])) {
+    return;
+  }
+  $css_js_included = &drupal_static(__FUNCTION__, FALSE);
+  if ($css_js_included) {
+    return;
+  }
+
+  $view = $vars['view'];
+  $valid_views = array(
+    'cmnc_content_a_user_follows',
+    'cmnc_topics_a_user_follows',
+    'cmnc_users_that_a_user_follows',
+  );
+  if (array_search($view->name, $valid_views) !== FALSE) {
+    $module_path = drupal_get_path('module', 'cmnc_ui');
+    drupal_add_js($module_path . '/js/cmnc_ui.js');
+    drupal_add_css($module_path . '/css/cmnc_ui.css');
+    $css_js_included = TRUE;
+  }
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ *
+ * Hides the Notification Center field on the profile form since we add it
+ * to the Notification Settings tab.
+ */
+function cmnc_ui_form_edit_profile_user_profile_form_alter(&$form, &$form_state) {
+  $form['cmnc_subscribe_message_center']['#access'] = FALSE;
+}
+
+/**
+ * Implements hook_message_subscribe_get_subscribers_alter().
+ */
+function cmnc_ui_message_subscribe_get_subscribers_alter(&$uids, $values) {
+  if (empty($uids)) {
+    // Nobody is subscribed to the content.
+    return;
+  }
+
+  cmnc_ui_add_cmnc_notifier($uids, $values);
+  cmnc_ui_remove_notifiers($uids, $values);
+}
+
+/**
+ * Implements hook_flag().
+ *
+ * Automatically enables notifications in the message center when a user
+ * follows some content (if they enabled that option)
+ */
+function cmnc_ui_flag($action, $flag, $content_id, $account) {
+  $prefix = variable_get('message_subscribe_flag_prefix', 'subscribe') . '_';
+  if (strpos($flag->name, $prefix) === 0) {
+    // The flag is a subscription flag.
+    if (cmnc_ui_default_use_notification_center($account) || $action == 'unflag') {
+      // User wants to use the notification center for the subscription.
+      // Flag or unflag user for notifying according to action taken.
+      $cmnc_flag_name = 'cmnc_' . str_replace($prefix, '', $flag->name);
+      // We use a single flag for both nodes and groups, so convert
+      // the commons_follow_group flag to be cmnc_node.
+      if ($cmnc_flag_name == 'cmnc_group') {
+        $cmnc_flag_name = 'cmnc_node';
+      }
+      flag($action, $cmnc_flag_name, $content_id, $account);
+    }
+  }
+}
+
+/**
+ * Implements hook_user_insert().
+ *
+ * Ensures new user accounts are initialzed with the correct flags.
+ */
+function cmnc_ui_user_insert(&$edit, $account, $category) {
+  // Enable all Notification Types by default.
+  $notification_types = cmnc_ui_get_notification_type_flags();
+
+  foreach ($notification_types as $type => $settings) {
+    foreach ($settings['notifiers'] as $notifier => $notification_type_flag_name) {
+      flag('flag', $notification_type_flag_name, $account->uid, $account);
+    }
+  }
+}
+
+/**
+ * Implements hook_cmnc_ui_type_definitions().
+ */
+function cmnc_ui_cmnc_ui_type_definitions() {
+  $flags['cmnc_ui_notify_user'] = array(
+    'title' => t('Notify me when a user follows me'),
+    'notifiers' => array(
+      'email' => 'cmnc_ui_notify_user_follow_email',
+      'cmnc' => 'cmnc_ui_notify_user_follow_cmnc',
+    ),
+    'notifier_flags' => array(
+      'commons_follow_user',
+    ),
+    'message_types' => array(
+      'cmnc_user_followed',
+    ),
+  );
+
+  return $flags;
+}
+//endregion
+
+
+//region Callbacks
+/**
+ * Callback function for the Message center checkbox on the user edit page.
+ *
+ * @param array $form
+ *   The notification settings form.
+ *
+ * @param array $form_state
+ *   The submitted form state.
+ */
+function cmnc_ui_subscribe_message_center_submit($form, &$form_state) {
+  // If the user has changed the value for this checkbox,
+  // save her account in order to save the change.
+  if ($form_state['values']['cmnc_subscribe_message_center'] != $form['cmnc_subscribe_message_center']['#default_value']) {
+    $account = user_load($form_state['values']['uid']);
+    $account->cmnc_subscribe_message_center[LANGUAGE_NONE][0]['value'] = $form_state['values']['cmnc_subscribe_message_center'];
+    user_save($account);
+  }
+}
+//endregion
+
+
+/**
+ * Determines if a user account has CMNC notifications enabled by default.
+ *
+ * @param object $account
+ *   The user account object to check.
+ *   Uses the current logged in user if not specified.
+ *
+ * @return bool
+ *   TRUE if the user wants CMNC notifications by default.
+ */
+function cmnc_ui_default_use_notification_center($account = NULL) {
+  if (!isset($account)) {
+    global $user;
+    $account = user_load($user->uid);
+  }
+
+  if (!isset($account->cmnc_subscribe_message_center)) {
+    $account = user_load($account->uid);
+  }
+
+  $enabled_by_default = FALSE;
+  $wrapper = entity_metadata_wrapper('user', $account);
+  if (isset($wrapper->cmnc_subscribe_message_center)) {
+    $enabled_by_default = (bool) $wrapper->cmnc_subscribe_message_center->value();
+  }
+
+  return $enabled_by_default;
+}
+
+/**
+ * Scans the system to see if any user accounts are missing their defaults.
+ *
+ * @return bool
+ *   TRUE if all accounts have a default setting.
+ *   FALSE if any account is missing it's default setting.
+ */
+function cmnc_ui_check_user_default_settings() {
+  $query = _cmnc_ui_user_default_settings_query(FALSE, TRUE);
+  $result = $query->execute()->fetchField();
+
+  return $result == 0;
+}
+
+/**
+ * Generates a query for checking user default settings.
+ *
+ * @param bool $all
+ *   Should the query return all users or just those missing a default setting.
+ *
+ * @param bool $count
+ *   TRUE to return a count of users.  FALSE to return a list of users.
+ *
+ * @return \SelectQuery
+ *   A SelectQuery object.
+ */
+function _cmnc_ui_user_default_settings_query($all = FALSE, $count = FALSE) {
+  $query = db_select('users', 'u');
+  if ($count) {
+    $query->addExpression('COUNT(DISTINCT u.uid)', 'user_count');
+  }
+  else {
+    $query->fields('u', array('uid'));
+  }
+
+  $query->condition('u.status', 1);
+  $query->addJoin('LEFT OUTER', 'field_data_cmnc_subscribe_message_center', 'smc', 'u.uid=smc.entity_id');
+  if (!$all) {
+    $query->isNull('smc.entity_id');
+  }
+
+  $query->orderBy('u.uid');
+
+  return $query;
+}
+
+/**
+ * Adds the CMNC notifier to users that have enabled it.
+ *
+ * @param array $uids
+ *   A list of uids that should be notified.
+ *
+ * @param array $values
+ *   The context information for the notifications.
+ */
+function cmnc_ui_add_cmnc_notifier(&$uids, $values) {
+  $cmnc_flags = cmnc_flag_get_flags();
+  $cmnc_flag_ids = array();
+  foreach ($cmnc_flags as $flag) {
+    $cmnc_flag_ids[] = $flag->fid;
+  }
+  $cmnc_flag_ids_string = implode(',', $cmnc_flag_ids);
+
+  $subscription_flags = message_subscribe_flag_get_flags();
+  $subscription_flag_ids = array();
+  foreach ($subscription_flags as $flag) {
+    $subscription_flag_ids[] = $flag->fid;
+  }
+
+  // Base query to see if the users have CMNC notifications enabled.
+  $query = db_select('flag_content', 'fc');
+  $query->fields('fc', array('uid', 'fid'))
+    ->condition('fc.uid', array_keys($uids), 'IN')
+    ->condition('fc.fid', $subscription_flag_ids, 'IN');
+
+  $query->leftJoin('flags', 'f', 'f.fid=fc.fid');
+  $query->addField('f', 'name', 'flag_name');
+
+  $query->leftJoin('flag_content', 'fc1', "fc1.uid=fc.uid AND fc1.content_type=fc.content_type AND fc1.content_id=fc.content_id AND fc1.fid IN($cmnc_flag_ids_string)");
+  $query->addField('fc1', 'uid', 'notify_user');
+
+  // Filter by the content generating the message.
+  $entity_conditions = array();
+  foreach ($values['context'] as $entity_type => $entity_ids) {
+    if (!empty($entity_ids)) {
+      $entity_conditions[] = db_and()
+        ->condition('fc.content_type', $entity_type, '=')
+        ->condition('fc.content_id', array_keys($entity_ids), 'IN');
+    }
+  }
+  if (!empty($entity_conditions)) {
+    $entity_or_conditions = db_or();
+    foreach ($entity_conditions as $entity_condition) {
+      $entity_or_conditions->condition($entity_condition);
+    }
+    $query->condition($entity_or_conditions);
+  }
+
+  $query->orderBy('fc.uid');
+  $query->orderBy('fc.content_id');
+  $query->orderBy('f.name');
+
+  $result = $query->execute();
+
+  foreach ($result as $row) {
+    // Check to see if the notification was triggered by following a
+    // group or user, but the target user has deselected notifications on
+    // this specific message.
+    if (isset($uids[$row->uid]['notifiers']['cmnc']) && $row->flag_name == 'commons_follow_node' && empty($row->notify_user)) {
+      unset($uids[$row->uid]['notifiers']['cmnc']);
+    }
+    elseif (!empty($row->notify_user)) {
+      $uids[$row->uid]['notifiers']['cmnc'] = 'cmnc';
+    }
+  }
+}
+
+/**
+ * Removes notifications for specific types if disabled by the user.
+ *
+ * @param array $uids
+ *   A list of uids that should be notified.
+ *
+ * @param array $values
+ *   The context information for the notifications.
+ */
+function cmnc_ui_remove_notifiers(&$uids, $values) {
+  // Get a list of notification type flags to check.
+  $notification_flags = cmnc_ui_get_notification_type_users_and_flags($uids);
+
+
+  if (!empty($notification_flags)) {
+    $altered_uids = array();
+
+    foreach ($notification_flags as $flag_name => $flag_uids) {
+      $notifier = cmnc_ui_get_notifier_by_notification_type_flag($flag_name);
+
+      // Get a list of user accounts that do not have this
+      // notification type enabled.
+      $query = cmnc_ui_get_user_notification_type_query($flag_name, $flag_uids);
+      $results = $query->execute();
+
+      foreach ($results as $row) {
+        $uid = $row->uid;
+        if (isset($uids[$uid]['notifiers'][$notifier])) {
+          unset($uids[$uid]['notifiers'][$notifier]);
+          $altered_uids[] = $uid;
+        }
+      }
+    }
+
+    // Remove any UIDs with no notifiers defined.
+    if (!empty($altered_uids)) {
+      $altered_uids = array_unique($altered_uids, SORT_NUMERIC);
+      foreach ($uids as $uid => $notification_settings) {
+        if (array_search($uid, $altered_uids) && empty($notification_settings['notifiers'])) {
+          unset($uids[$uid]);
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Generates a query to see if any users have disabled notifications.
+ *
+ * @param string $flag_name
+ *   The name of the notification type flag.
+ *
+ * @param array $flag_uids
+ *   An array of uids to check.
+ *
+ * @return SelectQuery
+ *   A query object ready to run.
+ */
+function cmnc_ui_get_user_notification_type_query($flag_name, $flag_uids) {
+  $subquery = db_select('flags', 'f');
+  $subquery->join('flag_content', 'fc', 'f.fid=fc.fid');
+  $subquery->addField('fc', 'fcid');
+  $subquery->condition('f.name', $flag_name);
+  $subquery->where('fc.uid=u.uid');
+
+  $query = db_select('users', 'u')
+    ->fields('u', array('uid'))
+    ->condition('u.uid', $flag_uids, 'IN');
+  $query->notExists($subquery);
+  return $query;
+}
+
+/**
+ * Generates a list of notification type flags and associated users.
+ *
+ * @param array $uids
+ *   The list of users pending notification.
+ *
+ * @return array
+ *   An array of notification type flags and user accounts associated
+ *   with them.
+ */
+function cmnc_ui_get_notification_type_users_and_flags($uids) {
+  $notification_flags = array();
+  foreach ($uids as $uid => $notification_settings) {
+    $notifiers = $notification_settings['notifiers'];
+    $flags = $notification_settings['flags'];
+
+    // See if the flags are covered by the notification types flags.
+    foreach ($flags as $trigger_flag) {
+      foreach ($notifiers as $notifier) {
+        $notification_type_flag_name = cmnc_ui_get_notification_type_flags_by_trigger_flag($trigger_flag, $notifier);
+        if ($notification_type_flag_name) {
+          $notification_flags[$notification_type_flag_name][] = $uid;
+        }
+      }
+    }
+  }
+
+  return $notification_flags;
+}
+
+/**
+ * Retrieves a list of enabled notification type flags for a given notifier.
+ *
+ * @return array
+ *   An associative array of notification type flags keyed by notification type.
+ */
+function cmnc_ui_get_notification_type_flags() {
+  $flags = &drupal_static(__FUNCTION__);
+
+  if (!isset($flags)) {
+    // TODO: Refactor this to be a hook implementation.
+    $flags = module_invoke_all('cmnc_ui_type_definitions');
+    drupal_alter('cmnc_ui_type_definitions', $flags);
+  }
+
+  return $flags;
+}
+
+/**
+ * Retrieves the notification type flag for a given trigger flag.
+ *
+ * @param string $trigger_flag
+ *   The machine name of the flag triggering the notification.
+ *
+ * @param string $notifier
+ *   The name of the notifier being processed.
+ *
+ * @return string|bool
+ *   Either the name of a notification type flag or FALSE if the trigger
+ *   flag does not have an associated notification type flag.
+ */
+function cmnc_ui_get_notification_type_flags_by_trigger_flag($trigger_flag, $notifier) {
+  $trigger_flags = &drupal_static(__FUNCTION__);
+
+  if (!isset($trigger_flags)) {
+    $notification_type_flags = cmnc_ui_get_notification_type_flags();
+    foreach ($notification_type_flags as $notification_type => $notification_type_settings) {
+      foreach ($notification_type_settings['notifier_flags'] as $notifier_flag_name) {
+        foreach ($notification_type_settings['notifiers'] as $notifier => $notification_type_flag_name) {
+          $trigger_flags[$notifier_flag_name][$notifier] = $notification_type_flag_name;
+        }
+      }
+    }
+  }
+
+//  $flags['commons_follow_user'] = array(
+//    'email' => 'cmnc_ui_notify_user_follow_email',
+//    'cmnc' => 'cmnc_ui_notify_user_follow_cmnc',
+//  );
+
+  return isset($trigger_flags[$trigger_flag][$notifier]) ? $trigger_flags[$trigger_flag][$notifier] : FALSE;
+}
+
+/**
+ * Returns the notifier associated with the passed flag.
+ *
+ * @param string $notification_type_flag
+ *   Name of a notification type flag.
+ *
+ * @return string|bool
+ *   Either the name of the notifier for the flag or FALSE if the flag
+ *   is not associated with a notifier.
+ */
+function cmnc_ui_get_notifier_by_notification_type_flag($notification_type_flag) {
+  $notifiers = &drupal_static(__FUNCTION__);
+
+  if (!isset($notifiers)) {
+    $notification_type_flags = cmnc_ui_get_notification_type_flags();
+    foreach ($notification_type_flags as $notification_type => $notification_type_settings) {
+      foreach ($notification_type_settings['notifiers'] as $notifier => $notifier_flag) {
+        $notifiers[$notifier_flag] = $notifier;
+      }
+    }
+  }
+
+  return isset($notifiers[$notification_type_flag]) ? $notifiers[$notification_type_flag] : FALSE;
+}

@@ -1,0 +1,26 @@
+# Italian translation of Simplelogin (7.x-1.0)
+# Copyright (c) 2016 by the Italian translation team
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Simplelogin (7.x-1.0)\n"
+"POT-Creation-Date: 2016-07-19 15:44+0000\n"
+"PO-Revision-Date: YYYY-mm-DD HH:MM+ZZZZ\n"
+"Language-Team: Italian\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n!=1);\n"
+
+msgid "Home"
+msgstr "Home"
+msgid "Forgot password?"
+msgstr "Password dimenticata?"
+msgid "Login"
+msgstr "Accedi"
+msgid "Image"
+msgstr "Immagine"
+msgid "Click here"
+msgstr "Clicca qui"
+msgid "Uploading..."
+msgstr "Caricamento in corso..."
